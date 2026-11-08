@@ -11,16 +11,24 @@ import lime.ui.*;
 
 import flixel.FlxBasic;
 
+#if android
+import mobile.external.android.FileExplorer;
+#end
+
 //Currently only supports OPEN and SAVE, might change that in the future, who knows
 class FileDialogHandler extends FlxBasic
 {
+	#if !mobile
 	var _fileRef:FileReferenceCustom;
+	#end
 	var _dialogMode:FileDialogType = OPEN;
 	public function new()
 	{
+		#if !mobile
 		_fileRef = new FileReferenceCustom();
 		_fileRef.addEventListener(Event.CANCEL, onCancelFn);
 		_fileRef.addEventListener(IOErrorEvent.IO_ERROR, onErrorFn);
+		#end
 
 		super();
 	}
@@ -44,8 +52,12 @@ class FileDialogHandler extends FlxBasic
 
 		removeEvents();
 		_currentEvent = onSaveComplete;
+		#if !mobile
 		_fileRef.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, _currentEvent);
 		_fileRef.save(dataToSave, fileName);
+		#elseif android
+		FileExplorer.saveFile(dataToSave, MIMEType.JSON, fileName, (data:Dynamic)->onSaveComplete(data), ()->onCancelFn(null), ()->onErrorFn(null));
+		#end
 	}
 
 	public function open(?defaultName:String = null, ?title:String = null, ?filter:Array<FileFilter> = null, ?onComplete:Void->Void, ?onCancel:Void->Void, ?onError:Void->Void)
@@ -57,15 +69,26 @@ class FileDialogHandler extends FlxBasic
 
 		this._dialogMode = OPEN;
 		_startUp(onComplete, onCancel, onError);
+		#if !mobile
 		if(filter == null) filter = [new FileFilter('JSON', 'json')];
 		#if mac
 		filter = [];
 		#end
+		#else
+		var androidFilter = [MIMEType.JSON];
+		if (filter != null) {
+			androidFilter = MIMEType.filterToMIME(filter);
+		}
+		#end
 
 		removeEvents();
 		_currentEvent = onLoadComplete;
+		#if !mobile
 		_fileRef.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, _currentEvent);
 		_fileRef.browseEx(OPEN, defaultName, title, filter);
+		#elseif android
+		FileExplorer.selectFile(androidFilter, (data:Dynamic)->onLoadComplete(data), ()->onCancelFn(null), ()->onErrorFn(null));
+		#end
 	}
 
 	public function openDirectory(?title:String = null, ?onComplete:Void->Void, ?onCancel:Void->Void, ?onError:Void->Void)
@@ -80,17 +103,25 @@ class FileDialogHandler extends FlxBasic
 
 		removeEvents();
 		_currentEvent = onLoadDirectoryComplete;
+		#if !mobile
 		_fileRef.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, _currentEvent);
 		_fileRef.browseEx(OPEN_DIRECTORY, null, title);
+		#elseif android
+		FileExplorer.selectDirectory((data:Dynamic)->onLoadDirectoryComplete(data), ()->onCancelFn(null), ()->onErrorFn(null));
+		#end
 	}
 
 	public var data:String;
 	public var path:String;
 	public var completed:Bool = true;
-	function onSaveComplete(_)
+	function onSaveComplete(data:Dynamic)
 	{
+		#if !mobile
 		@:privateAccess
 		this.path = _fileRef._trackSavedPath;
+		#else
+		this.path = data;
+		#end
 		this.completed = true;
 		trace('Saved file to: $path');
 
@@ -99,10 +130,14 @@ class FileDialogHandler extends FlxBasic
 		if(onComplete != null) onComplete();
 	}
 
-	function onLoadComplete(_)
+	function onLoadComplete(data:Dynamic)
 	{
+		#if !mobile
 		@:privateAccess
 		this.path = _fileRef.__path;
+		#else
+		this.path = data;
+		#end
 		this.data = File.getContent(this.path);
 		this.completed = true;
 		trace('Loaded file from: $path');
@@ -113,10 +148,14 @@ class FileDialogHandler extends FlxBasic
 			onComplete();
 	}
 
-	function onLoadDirectoryComplete(_)
+	function onLoadDirectoryComplete(data:Dynamic)
 	{
+		#if !mobile
 		@:privateAccess
 		this.path = _fileRef.__path;
+		#else
+		this.path = data;
+		#end
 		this.completed = true;
 		trace('Loaded directory: $path');
 
@@ -154,15 +193,19 @@ class FileDialogHandler extends FlxBasic
 	function removeEvents()
 	{
 		if(_currentEvent == null) return;
-		
+
+		#if !mobile
 		_fileRef.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, _currentEvent);
+		#end
 		_currentEvent = null;
 	}
 
 	override function destroy()
 	{
 		removeEvents();
+		#if !mobile
 		_fileRef = null;
+		#end
 		_currentEvent = null;
 		onComplete = null;
 		onCancel = null;

@@ -4,6 +4,10 @@ import flixel.input.gamepad.FlxGamepadButton;
 import flixel.input.gamepad.FlxGamepadInputID;
 import flixel.input.gamepad.mappings.FlxGamepadMapping;
 import flixel.input.keyboard.FlxKey;
+import mobile.input.MobileInputID;
+import mobile.input.MobileInputManager;
+import mobile.objects.MobileControls;
+import mobile.objects.VirtualPad;
 
 class Controls
 {
@@ -85,12 +89,13 @@ class Controls
 	//Gamepad & Keyboard stuff
 	public var keyboardBinds:Map<String, Array<FlxKey>>;
 	public var gamepadBinds:Map<String, Array<FlxGamepadInputID>>;
+	public var mobileBinds:Map<String, Array<MobileInputID>>;
 	public function justPressed(key:String)
 	{
 		var result:Bool = (FlxG.keys.anyJustPressed(keyboardBinds[key]) == true);
 		if(result) controllerMode = false;
 
-		return result || _myGamepadJustPressed(gamepadBinds[key]) == true;
+		return result || _mobileJustPressed(mobileBinds[key]) || _virtualPadJustPressed(mobileBinds[key]) || _myGamepadJustPressed(gamepadBinds[key]) == true;
 	}
 
 	public function pressed(key:String)
@@ -98,7 +103,7 @@ class Controls
 		var result:Bool = (FlxG.keys.anyPressed(keyboardBinds[key]) == true);
 		if(result) controllerMode = false;
 
-		return result || _myGamepadPressed(gamepadBinds[key]) == true;
+		return result || _mobilePressed(mobileBinds[key]) || _virtualPadPressed(mobileBinds[key]) || _myGamepadPressed(gamepadBinds[key]) == true;
 	}
 
 	public function justReleased(key:String)
@@ -106,7 +111,7 @@ class Controls
 		var result:Bool = (FlxG.keys.anyJustReleased(keyboardBinds[key]) == true);
 		if(result) controllerMode = false;
 
-		return result || _myGamepadJustReleased(gamepadBinds[key]) == true;
+		return result || _mobileJustReleased(mobileBinds[key]) || _virtualPadJustReleased(mobileBinds[key]) || _myGamepadJustReleased(gamepadBinds[key]) == true;
 	}
 
 	public var controllerMode:Bool = false;
@@ -156,11 +161,87 @@ class Controls
 		return false;
 	}
 
+	private function _mobileJustPressed(keys:Array<MobileInputID>):Bool
+	{
+		if (keys != null && mobileInstance != null)
+		{
+			return mobileInstance.currentMode.anyJustPressed(keys);
+		}
+		return false;
+	}
+
+	private function _mobilePressed(keys:Array<MobileInputID>):Bool
+	{
+		if (keys != null && mobileInstance != null)
+		{
+			return mobileInstance.currentMode.anyPressed(keys);
+		}
+		return false;
+	}
+
+	private function _mobileJustReleased(keys:Array<MobileInputID>):Bool
+	{
+		if (keys != null && mobileInstance != null)
+		{
+			return mobileInstance.currentMode.anyJustReleased(keys);
+		}
+		return false;
+	}
+
+	private function _virtualPadJustPressed(keys:Array<MobileInputID>):Bool {
+		if (keys != null && padInstance != null)
+		{
+			return padInstance.anyJustPressed(keys);
+		}
+		return false;
+	}
+
+	private function _virtualPadPressed(keys:Array<MobileInputID>):Bool {
+		if (keys != null && padInstance != null)
+		{
+			return padInstance.anyPressed(keys);
+		}
+		return false;
+	}
+
+	private function _virtualPadJustReleased(keys:Array<MobileInputID>):Bool {
+		if (keys != null && padInstance != null)
+		{
+			return padInstance.anyJustReleased(keys);
+		}
+		return false;
+	}
+
+	public var inSubstate:Bool = false;
+	public var recursiveSubstates:Bool = true;
+	public var currentState(get, never):Dynamic;
+	private function get_currentState():Dynamic {
+		if (inSubstate) {
+			var substate:MusicBeatSubstate = cast(MusicBeatState.getState().subState, MusicBeatSubstate);
+			if (substate != null && recursiveSubstates && substate.subState != null) {
+				while (true) {
+					if (substate.subState != null) substate = cast(substate.subState, MusicBeatSubstate);
+					else break;
+				}
+			}
+			return substate;
+		}
+		else return MusicBeatState.getState();
+	}
+
+	// CAN BE NULL BE CAREFUL!!!!!!!!!!!!!!
+	public var mobileInstance(get, never):MobileControls;
+	private function get_mobileInstance():MobileControls return currentState?.mobileControls;
+
+	public var padInstance(get, never):VirtualPad;
+	private function get_padInstance() return currentState?.virtualPad;
+
 	// IGNORE THESE
 	public static var instance:Controls;
 	public function new()
 	{
 		keyboardBinds = ClientPrefs.keyBinds;
 		gamepadBinds = ClientPrefs.gamepadBinds;
+		mobileBinds = ClientPrefs.mobileBinds;
 	}
 }

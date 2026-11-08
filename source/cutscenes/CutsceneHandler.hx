@@ -74,7 +74,7 @@ class CutsceneHandler extends FlxBasic
 		
 		if(_canSkip && cutsceneTime > 0.1)
 		{
-			if(Controls.instance.pressed('accept'))
+			if(Controls.instance.pressed('accept') #if mobile || TouchUtil.pressed #end)
 				holdingTime = Math.max(0, Math.min(_timeToSkip, holdingTime + elapsed));
 			else if (holdingTime > 0)
 				holdingTime = Math.max(0, FlxMath.lerp(holdingTime, -0.1, FlxMath.bound(elapsed * 3, 0, 1)));

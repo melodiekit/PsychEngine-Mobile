@@ -42,6 +42,8 @@ import objects.BGSprite;
 import states.PlayState;
 import states.LoadingState;
 
+import mobile.backend.TouchUtil;
+
 #if flxanimate
 import flxanimate.*;
 import flxanimate.PsychFlxAnimate as FlxAnimate;

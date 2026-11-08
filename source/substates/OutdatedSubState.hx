@@ -41,6 +41,8 @@ class OutdatedSubState extends MusicBeatSubstate
 
 		FlxTween.tween(bg, { alpha: 0.8 }, 0.6, { ease: FlxEase.sineIn });
 		FlxTween.tween(warnText, { alpha: 1.0 }, 0.6, { ease: FlxEase.sineIn });
+
+		addVirtualPad(NONE, A_B);
 	}
 
 	override function update(elapsed:Float)
@@ -50,7 +52,7 @@ class OutdatedSubState extends MusicBeatSubstate
 				leftState = true;
 				CoolUtil.browserLoad("https://github.com/ShadowMario/FNF-PsychEngine/releases");
 			}
-			else if(controls.BACK) {
+			else if(controls.BACK #if android || FlxG.android.justReleased.BACK #end) {
 				leftState = true;
 			}
 			if(leftState)

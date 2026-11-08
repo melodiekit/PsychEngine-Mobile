@@ -14,26 +14,48 @@ import cutscenes.DialogueCharacter;
 
 import states.editors.content.Prompt;
 
+#if android
+import mobile.external.android.FileExplorer;
+#end
+
 class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEventHandler.PsychUIEvent
 {
 	var box:FlxSprite;
 	var daText:TypedAlphabet = null;
 
 	private static var TIP_TEXT_MAIN:String =
+	#if !mobile
 	'JKLI - Move camera (Hold Shift to move 4x faster)
 	\nQ/E - Zoom out/in
 	\nR - Reset Camera
 	\nH - Toggle Speech Bubble
-	\nSpace - Reset text';
+	\nSpace - Reset text'
+	#else
+	'Swipe - Move camera
+	\nX/Y - Zoom out/in
+	\nZ - Reset Camera
+	\nA - Toggle Speech Bubble
+	\nC - Reset text'
+	#end;
 
 	private static var TIP_TEXT_OFFSET:String =
+	#if !mobile
 	'JKLI - Move camera (Hold Shift to move 4x faster)
 	\nQ/E - Zoom out/in
 	\nR - Reset Camera
 	\nH - Toggle Ghosts
 	\nWASD - Move Looping animation offset (Red)
 	\nArrow Keys - Move Idle/Finished animation offset (Blue)
-	\nHold Shift to move offsets 10x faster';
+	\nHold Shift to move offsets 10x faster'
+	#else
+	'Swipe - Move camera
+	\nX/Y - Zoom out/in
+	\nZ - Reset Camera
+	\nA - Toggle Ghosts
+	\nArrow Keys - Move Looping animation offset (Red)
+	\nHold D + Arrow Keys - Move Idle/Finished animation offset (Blue)
+	\nHold C to move offsets 10x faster'
+	#end;
 
 	var tipText:FlxText;
 	var offsetLoopText:FlxText;
@@ -134,10 +156,18 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 		hudGroup.add(daText);
 
 		addEditorBox();
-		FlxG.mouse.visible = true;
+		#if !mobile FlxG.mouse.visible = true; #end
 		updateCharTypeBox();
 		
 		super.create();
+
+		addVirtualPad(LEFT_FULL, A_B_C_X_Y_Z);
+		virtualPad.addAction(D);
+		virtualPad.buttonD.y = virtualPad.buttonZ.y - 132;
+		virtualPad.buttonD.exists = false;
+		virtualPad.buttonLeft.exists = virtualPad.buttonRight.exists = false;
+		virtualPad.buttonUp.setPosition(0, FlxG.height - 248);
+		virtualPad.buttonDown.setPosition(0, FlxG.height - 124);
 	}
 
 	var UI_typebox:PsychUIBox;
@@ -157,6 +187,11 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 		add(UI_mainbox);
 		UI_mainbox.selectedName = 'Character';
 		lastTab = UI_mainbox.selectedName;
+
+		#if mobile
+		UI_mainbox.setPosition(20, 100);
+		UI_typebox.setPosition(UI_mainbox.x + UI_mainbox.width + 10, 170);
+		#end
 	}
 
 	var characterTypeRadio:PsychUIRadioGroup;
@@ -391,7 +426,7 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 		}
 
 		curAnim = 0;
-		animText.text = 'Animation: ' + character.jsonFile.animations[curAnim].anim + ' (' + (curAnim + 1) +' / ' + character.jsonFile.animations.length + ') - Press W or S to scroll';
+		animText.text = 'Animation: ' + character.jsonFile.animations[curAnim].anim + ' (' + (curAnim + 1) +' / ' + character.jsonFile.animations.length + ') - ' + #if !mobile 'Press W or S to scroll' #else 'Press UP or DOWN to scroll' #end;
 
 		#if DISCORD_ALLOWED
 		// Updating Discord Rich Presence
@@ -438,6 +473,9 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 	var currentGhosts:Int = 0;
 	var lastTab:String = 'Character';
 	var transitioning:Bool = false;
+	#if mobile
+	var prevZoom:Float = 1;
+	#end
 	override function update(elapsed:Float) {
 		super.update(elapsed);
 		if(transitioning)
@@ -456,7 +494,7 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 		if(PsychUIInputText.focusOn == null)
 		{
 			ClientPrefs.toggleVolumeKeys(true);
-			if(FlxG.keys.justPressed.SPACE && UI_mainbox.selectedName == 'Character') {
+			if((FlxG.keys.justPressed.SPACE || virtualPad.buttonC.justPressed) && UI_mainbox.selectedName == 'Character') {
 				character.playAnim(character.jsonFile.animations[curAnim].anim);
 				daText.resetDialogue();
 				updateTextBox();
@@ -465,7 +503,7 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 			//lots of Ifs lol get trolled
 			var offsetAdd:Int = 1;
 			var speed:Float = 300;
-			if(FlxG.keys.pressed.SHIFT) {
+			if(FlxG.keys.pressed.SHIFT || virtualPad.buttonC.pressed) {
 				speed = 1200;
 				offsetAdd = 10;
 			}
@@ -482,13 +520,26 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 				}
 			}
 
+			#if mobile
+			if (TouchUtil.input != null && TouchUtil.input.pressed && !TouchUtil.initiallyOverlapped([virtualPad], camControls, null, [TouchUtil.input]) && !TouchUtil.initiallyOverlapped([UI_mainbox, UI_typebox], camHUD, null, [TouchUtil.input])) {
+				// if (FlxG.touches.list.length < 2) { // Move camera
+					mainGroup.x += TouchUtil.input.deltaScreenX;
+					mainGroup.y += TouchUtil.input.deltaScreenY;
+				/* }
+				else { // Zoom
+					// zooming by pinching
+					// i'll figure out the math for this later ugggggggggggggggghhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+				} */
+			}
+			#end
+
 			if(UI_mainbox.selectedName == 'Animations' && curSelectedAnim != null && character.dialogueAnimations.exists(curSelectedAnim)) {
 				var moved:Bool = false;
 				var animShit:DialogueAnimArray = character.dialogueAnimations.get(curSelectedAnim);
-				var controlArrayLoop:Array<Bool> = [FlxG.keys.justPressed.A, FlxG.keys.justPressed.W, FlxG.keys.justPressed.D, FlxG.keys.justPressed.S];
-				var controlArrayIdle:Array<Bool> = [FlxG.keys.justPressed.LEFT, FlxG.keys.justPressed.UP, FlxG.keys.justPressed.RIGHT, FlxG.keys.justPressed.DOWN];
+				var controlArrayLoop:Array<Bool> = #if !mobile [FlxG.keys.justPressed.A, FlxG.keys.justPressed.W, FlxG.keys.justPressed.D, FlxG.keys.justPressed.S] #else [virtualPad.buttonLeft.justPressed, virtualPad.buttonUp.justPressed, virtualPad.buttonRight.justPressed, virtualPad.buttonDown.justPressed] #end;
+				var controlArrayIdle:Array<Bool> = #if !mobile [FlxG.keys.justPressed.LEFT, FlxG.keys.justPressed.UP, FlxG.keys.justPressed.RIGHT, FlxG.keys.justPressed.DOWN] #else [virtualPad.buttonLeft.justPressed, virtualPad.buttonUp.justPressed, virtualPad.buttonRight.justPressed, virtualPad.buttonDown.justPressed] #end;
 				for (i in 0...controlArrayLoop.length) {
-					if(controlArrayLoop[i]) {
+					if(controlArrayLoop[i] #if mobile && !virtualPad.buttonD.pressed #end) {
 						if(i % 2 == 1) {
 							animShit.loop_offsets[1] += offsetAdd * negaMult[i];
 						} else {
@@ -498,7 +549,7 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 					}
 				}
 				for (i in 0...controlArrayIdle.length) {
-					if(controlArrayIdle[i]) {
+					if(controlArrayIdle[i] #if mobile && virtualPad.buttonD.pressed #end) {
 						if(i % 2 == 1) {
 							animShit.idle_offsets[1] += offsetAdd * negaMult[i];
 						} else {
@@ -516,15 +567,15 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 				}
 			}
 
-			if (FlxG.keys.pressed.Q && camGame.zoom > 0.1) {
+			if ((FlxG.keys.pressed.Q || virtualPad.buttonX.pressed) && camGame.zoom > 0.1) {
 				camGame.zoom -= elapsed * camGame.zoom;
 				if(camGame.zoom < 0.1) camGame.zoom = 0.1;
 			}
-			if (FlxG.keys.pressed.E && camGame.zoom < 1) {
+			if ((FlxG.keys.pressed.E || virtualPad.buttonY.pressed) && camGame.zoom < 1) {
 				camGame.zoom += elapsed * camGame.zoom;
 				if(camGame.zoom > 1) camGame.zoom = 1;
 			}
-			if(FlxG.keys.justPressed.H) {
+			if(FlxG.keys.justPressed.H || virtualPad.buttonA.justPressed) {
 				if(UI_mainbox.selectedName == 'Animations') {
 					currentGhosts++;
 					if(currentGhosts > 2) currentGhosts = 0;
@@ -537,7 +588,7 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 					hudGroup.visible = !hudGroup.visible;
 				}
 			}
-			if(FlxG.keys.justPressed.R) {
+			if(FlxG.keys.justPressed.R || virtualPad.buttonZ.justPressed) {
 				camGame.zoom = 1;
 				mainGroup.setPosition(0, 0);
 				hudGroup.visible = true;
@@ -554,6 +605,10 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 					offsetIdleText.visible = true;
 					animText.visible = false;
 					currentGhosts = 0;
+					virtualPad.buttonD.exists = true;
+					virtualPad.buttonLeft.exists = virtualPad.buttonRight.exists = true;
+					virtualPad.buttonUp.setPosition(98, FlxG.height - 315);
+					virtualPad.buttonDown.setPosition(98, FlxG.height - 124);
 				} else {
 					hudGroup.alpha = 1;
 					mainGroup.alpha = 1;
@@ -565,12 +620,16 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 					animText.visible = true;
 					updateTextBox();
 					daText.resetDialogue();
+					virtualPad.buttonD.exists = false;
+					virtualPad.buttonLeft.exists = virtualPad.buttonRight.exists = false;
+					virtualPad.buttonUp.setPosition(0, FlxG.height - 248);
+					virtualPad.buttonDown.setPosition(0, FlxG.height - 124);
 					
 					if(curAnim < 0) curAnim = character.jsonFile.animations.length - 1;
 					else if(curAnim >= character.jsonFile.animations.length) curAnim = 0;
 					
 					character.playAnim(character.jsonFile.animations[curAnim].anim);
-					animText.text = 'Animation: ' + character.jsonFile.animations[curAnim].anim + ' (' + (curAnim + 1) +' / ' + character.jsonFile.animations.length + ') - Press W or S to scroll';
+					animText.text = 'Animation: ' + character.jsonFile.animations[curAnim].anim + ' (' + (curAnim + 1) +' / ' + character.jsonFile.animations.length + ') - ' + #if !mobile 'Press W or S to scroll' #else 'Press UP or DOWN to scroll' #end;
 				}
 				lastTab = UI_mainbox.selectedName;
 				currentGhosts = 0;
@@ -579,7 +638,7 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 			if(UI_mainbox.selectedName == 'Character')
 			{
 				var negaMult:Array<Int> = [1, -1];
-				var controlAnim:Array<Bool> = [FlxG.keys.justPressed.W, FlxG.keys.justPressed.S];
+				var controlAnim:Array<Bool> = #if !mobile [FlxG.keys.justPressed.W, FlxG.keys.justPressed.S] #else [virtualPad.buttonUp.justPressed, virtualPad.buttonDown.justPressed] #end;
 
 				if(controlAnim.contains(true))
 				{
@@ -595,11 +654,11 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 							}
 						}
 					}
-					animText.text = 'Animation: ' + character.jsonFile.animations[curAnim].anim + ' (' + (curAnim + 1) +' / ' + character.jsonFile.animations.length + ') - Press W or S to scroll';
+					animText.text = 'Animation: ' + character.jsonFile.animations[curAnim].anim + ' (' + (curAnim + 1) +' / ' + character.jsonFile.animations.length + ') - ' + #if !mobile 'Press W or S to scroll' #else 'Press UP or DOWN to scroll' #end;
 				}
 			}
 
-			if(FlxG.keys.justPressed.ESCAPE) {
+			if(FlxG.keys.justPressed.ESCAPE || virtualPad.buttonB.justPressed #if android || FlxG.android.justReleased.BACK #end) {
 				if(!unsavedProgress)
 				{
 					MusicBeatState.switchState(new states.editors.MasterEditorMenu());
@@ -616,27 +675,39 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 		}
 		else ClientPrefs.toggleVolumeKeys(false);
 	}
-	
+
+	#if !mobile
 	var _file:FileReference = null;
+	#end
 	function loadCharacter() {
 		var jsonFilter:FileFilter = new FileFilter('JSON', 'json');
+		#if !mobile
 		_file = new FileReference();
 		_file.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
 		_file.addEventListener(Event.CANCEL, onLoadCancel);
 		_file.addEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file.browse([#if !mac jsonFilter #end]);
+		#elseif android
+		FileExplorer.selectFile(MIMEType.filterToMIME([jsonFilter]), onLoadComplete, ()->onLoadCancel(null), ()->onLoadError(null));
+		#end
 	}
 
-	function onLoadComplete(_):Void
+	function onLoadComplete(data:Dynamic):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
+		#end
 
 		#if sys
 		var fullPath:String = null;
+		#if !mobile
 		@:privateAccess
 		if(_file.__path != null) fullPath = _file.__path;
+		#else
+		if(data != null) fullPath = data;
+		#end
 
 		if(fullPath != null) {
 			var rawJson:String = File.getContent(fullPath);
@@ -644,7 +715,11 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 				var loadedChar:DialogueCharacterFile = cast Json.parse(rawJson);
 				if(loadedChar.dialogue_pos != null) //Make sure it's really a dialogue character
 				{
+					#if !mobile
 					var cutName:String = _file.name.substr(0, _file.name.length - 5);
+					#else
+					var cutName:String = new haxe.io.Path(data).file;
+					#end
 					trace("Successfully loaded file: " + cutName);
 					character.jsonFile = loadedChar;
 					reloadCharacter();
@@ -656,12 +731,16 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 					scaleStepper.value = character.jsonFile.scale;
 					xStepper.value = character.jsonFile.position[0];
 					yStepper.value = character.jsonFile.position[1];
+					#if !mobile
 					_file = null;
+					#end
 					return;
 				}
 			}
 		}
+		#if !mobile
 		_file = null;
+		#end
 		#else
 		trace("File couldn't be loaded! You aren't on Desktop, are you?");
 		#end
@@ -672,10 +751,12 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 		*/
 	function onLoadCancel(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file = null;
+		#end
 		trace("Cancelled file loading.");
 	}
 
@@ -684,10 +765,12 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 		*/
 	function onLoadError(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file = null;
+		#end
 		trace("Problem loading file");
 	}
 
@@ -698,20 +781,26 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 			var splittedImage:Array<String> = imageInputText.text.trim().split('_');
 			var characterName:String = splittedImage[0].toLowerCase().replace(' ', '');
 
+			#if !mobile
 			_file = new FileReference();
 			_file.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
 			_file.addEventListener(Event.CANCEL, onSaveCancel);
 			_file.addEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 			_file.save(data, characterName + ".json");
+			#elseif android
+			FileExplorer.saveFile(data, MIMEType.JSON, characterName + ".json", onSaveComplete, ()->onSaveCancel(null), ()->onSaveError(null));
+			#end
 		}
 	}
 
 	function onSaveComplete(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
+		#end
 		FlxG.log.notice("Successfully saved file.");
 	}
 
@@ -720,10 +809,12 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 		*/
 	function onSaveCancel(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
+		#end
 	}
 
 	/**
@@ -731,10 +822,12 @@ class DialogueCharacterEditorState extends MusicBeatState implements PsychUIEven
 		*/
 	function onSaveError(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
+		#end
 		FlxG.log.error("Problem saving file");
 	}
 

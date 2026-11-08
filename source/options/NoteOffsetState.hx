@@ -171,6 +171,10 @@ class NoteOffsetState extends MusicBeatState
 		FlxG.sound.playMusic(Paths.music('offsetSong'), 1, true);
 
 		super.create();
+
+		addVirtualPad(LEFT_RIGHT, A_B_C);
+		virtualPad.allowSwiping = false;
+		virtualPad.buttonLeft.exists = virtualPad.buttonRight.exists = false;
 	}
 
 	var holdTime:Float = 0;
@@ -197,7 +201,7 @@ class NoteOffsetState extends MusicBeatState
 		if(controls.controllerMode != _lastControllerMode)
 		{
 			//trace('changed controller mode');
-			FlxG.mouse.visible = !controls.controllerMode;
+			#if !mobile FlxG.mouse.visible = !controls.controllerMode; #end
 			controllerPointer.visible = controls.controllerMode;
 
 			// changed to controller mid state
@@ -346,7 +350,7 @@ class NoteOffsetState extends MusicBeatState
 				}
 			}
 
-			if(controls.RESET)
+			if(controls.RESET || virtualPad.buttonC.justPressed)
 			{
 				for (i in 0...ClientPrefs.data.comboOffset.length)
 				{
@@ -384,7 +388,7 @@ class NoteOffsetState extends MusicBeatState
 				updateNoteDelay();
 			}
 
-			if(controls.RESET)
+			if(controls.RESET || virtualPad.buttonC.justPressed)
 			{
 				holdTime = 0;
 				barPercent = 0;
@@ -399,7 +403,7 @@ class NoteOffsetState extends MusicBeatState
 			updateMode();
 		}
 
-		if(controls.BACK)
+		if(controls.BACK #if android || FlxG.android.justReleased.BACK #end)
 		{
 			if(zoomTween != null) zoomTween.cancel();
 			if(beatTween != null) beatTween.cancel();
@@ -527,7 +531,7 @@ class NoteOffsetState extends MusicBeatState
 		FlxG.mouse.visible = false;
 		if(onComboMenu)
 		{
-			FlxG.mouse.visible = !controls.controllerMode;
+			#if !mobile FlxG.mouse.visible = !controls.controllerMode; #end
 			controllerPointer.visible = controls.controllerMode;
 		}
 
@@ -544,5 +548,7 @@ class NoteOffsetState extends MusicBeatState
 			str2 = Language.getPhrase('switch_on_start', '(Press Start to Switch)');
 
 		changeModeText.text = '< ${str.toUpperCase()} ${str2.toUpperCase()} >';
+
+		if (virtualPad != null) virtualPad.buttonLeft.exists = virtualPad.buttonRight.exists = !onComboMenu;
 	}
 }

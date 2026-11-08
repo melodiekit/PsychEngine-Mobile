@@ -18,6 +18,7 @@ class PsychUIDropDownMenu extends PsychUIInputText
 	public function new(x:Float, y:Float, list:Array<String>, callback:Int->String->Void, ?width:Float = 100)
 	{
 		super(x, y);
+		#if mobile requireDoublePress = true; #end
 		if(list == null) list = [];
 
 		_itemWidth = width - 2;
@@ -83,6 +84,7 @@ class PsychUIDropDownMenu extends PsychUIInputText
 	}
 
 	var _items:Array<PsychUIDropDownItem> = [];
+	#if mobile var _deltaAccumlation:Int = 0; #end
 	public var curScroll:Int = 0;
 	override function update(elapsed:Float)
 	{
@@ -90,13 +92,22 @@ class PsychUIDropDownMenu extends PsychUIInputText
 		super.update(elapsed);
 		if(FlxG.mouse.justPressed)
 		{
+			// double press fix
+			if(FlxG.mouse.overlaps(behindText, camera))
+			{
+				PsychUIInputText.focusOn = this;
+			}
 			if(FlxG.mouse.overlaps(button, camera))
 			{
+				canUnfocus = false;
 				button.animation.play('pressed', true);
 				if(lastFocus != this)
 					PsychUIInputText.focusOn = this;
 				else if(PsychUIInputText.focusOn == this)
+				{
 					PsychUIInputText.focusOn = null;
+					removeFocus();
+				}
 			}
 		}
 		else if(FlxG.mouse.released && button.animation.curAnim != null && button.animation.curAnim.name != 'normal') button.animation.play('normal', true);
@@ -110,6 +121,16 @@ class PsychUIDropDownMenu extends PsychUIInputText
 			var wheel:Int = FlxG.mouse.wheel;
 			if(FlxG.keys.justPressed.UP) wheel++;
 			if(FlxG.keys.justPressed.DOWN) wheel--;
+			#if mobile
+			if(TouchUtil.input != null)
+			{
+				_deltaAccumlation += TouchUtil.input.deltaY;
+				if(Math.abs(_deltaAccumlation) >= 10) {
+					wheel += Math.floor(_deltaAccumlation / 10);
+					_deltaAccumlation -= wheel * 10;
+				}
+			}
+			#end
 			if(wheel != 0) showDropDown(true, curScroll - wheel, _curFilter);
 		}
 	}

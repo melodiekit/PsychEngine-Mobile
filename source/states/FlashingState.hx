@@ -44,6 +44,8 @@ class FlashingState extends MusicBeatState
 		FlxTween.tween(texts, {alpha: 1.0}, 0.5, {
 			onComplete: (_) -> updateItems()
 		});
+
+		addVirtualPad(LEFT_RIGHT, A_B);
 	}
 
 	override function update(elapsed:Float)
@@ -52,7 +54,7 @@ class FlashingState extends MusicBeatState
 			super.update(elapsed);
 			return;
 		}
-		var back:Bool = controls.BACK;
+		var back:Bool = controls.BACK #if android || FlxG.android.justReleased.BACK #end;
 		if (controls.UI_LEFT_P || controls.UI_RIGHT_P) {
 			FlxG.sound.play(Paths.sound("scrollMenu"), 0.7);
 			isYes = !isYes;

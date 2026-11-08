@@ -64,6 +64,7 @@ class StoryMenuState extends MusicBeatState
 			MusicBeatState.switchState(new states.ErrorState("NO WEEKS ADDED FOR STORY MODE\n\nPress ACCEPT to go to the Week Editor Menu.\nPress BACK to return to Main Menu.",
 				function() MusicBeatState.switchState(new states.editors.WeekEditorState()),
 				function() MusicBeatState.switchState(new states.MainMenuState())));
+			addVirtualPad(NONE, A_B);
 			return;
 		}
 
@@ -186,11 +187,15 @@ class StoryMenuState extends MusicBeatState
 		changeDifficulty();
 
 		super.create();
+
+		addVirtualPad(LEFT_FULL, A_B_X_Y);
 	}
 
 	override function closeSubState() {
 		persistentUpdate = true;
 		changeWeek();
+		virtualPad.visible = true;
+		FlxG.inputs.reset();
 		super.closeSubState();
 	}
 
@@ -260,14 +265,16 @@ class StoryMenuState extends MusicBeatState
 			else if (changeDiff)
 				changeDifficulty();
 
-			if(FlxG.keys.justPressed.CONTROL)
+			if(FlxG.keys.justPressed.CONTROL || virtualPad.buttonX.justPressed)
 			{
 				persistentUpdate = false;
+				virtualPad.visible = false;
 				openSubState(new GameplayChangersSubstate());
 			}
-			else if(controls.RESET)
+			else if(controls.RESET || virtualPad.buttonY.justPressed)
 			{
 				persistentUpdate = false;
+				virtualPad.visible = false;
 				openSubState(new ResetScoreSubState('', curDifficulty, '', curWeek));
 				//FlxG.sound.play(Paths.sound('scrollMenu'));
 			}
@@ -275,7 +282,7 @@ class StoryMenuState extends MusicBeatState
 				selectWeek();
 		}
 
-		if (controls.BACK && !movedBack && !selectedWeek)
+		if ((controls.BACK #if android || FlxG.android.justReleased.BACK #end) && !movedBack && !selectedWeek)
 		{
 			FlxG.sound.play(Paths.sound('cancelMenu'));
 			movedBack = true;

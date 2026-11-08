@@ -17,6 +17,10 @@ import objects.Bar;
 import states.editors.content.Prompt;
 import states.editors.content.PsychJsonPrinter;
 
+#if android
+import mobile.external.android.FileExplorer;
+#end
+
 class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler.PsychUIEvent
 {
 	var character:Character;
@@ -126,7 +130,7 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 		add(healthIcon);
 		add(animsTxt);
 
-		var tipText:FlxText = new FlxText(FlxG.width - 300, FlxG.height - 24, 300, "Press F1 for Help", 20);
+		var tipText:FlxText = new FlxText(FlxG.width - 300, FlxG.height - 24, 300, "Press " + #if !mobile "F1" #else "F" #end + " for Help", 20);
 		tipText.cameras = [camHUD];
 		tipText.setFormat(null, 16, FlxColor.WHITE, RIGHT, OUTLINE_FAST, FlxColor.BLACK);
 		tipText.borderColor = FlxColor.BLACK;
@@ -152,10 +156,13 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 		add(frameAdvanceText);
 
 		addHelpScreen();
-		FlxG.mouse.visible = true;
+		#if !mobile FlxG.mouse.visible = true; #end
 		FlxG.camera.zoom = 1;
 
 		makeUIMenu();
+		#if mobile
+		tipText.setPosition(300, FlxG.height - 40);
+		#end
 
 		updatePointerPos();
 		updateHealthBar();
@@ -164,11 +171,26 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 		if(ClientPrefs.data.cacheOnGPU) Paths.clearUnusedMemory();
 
 		super.create();
+
+		addVirtualPad(LEFT_FULL, A_B_C_X_Y_Z);
+		virtualPad.addAction(D);
+		virtualPad.addAction(V);
+		virtualPad.addAction(G);
+		virtualPad.addAction(S);
+		virtualPad.addAction(F);
+		virtualPad.buttonF.setPosition(UI_box.x - 135, UI_box.y - 5);
+		virtualPad.buttonD.setPosition(virtualPad.buttonC.x - 132, virtualPad.buttonC.y);
+		virtualPad.buttonG.setPosition(virtualPad.buttonD.x - 132, virtualPad.buttonD.y);
+		virtualPad.buttonV.setPosition(virtualPad.buttonX.x - 132, virtualPad.buttonX.y);
+		virtualPad.buttonS.setPosition(virtualPad.buttonV.x - 132, virtualPad.buttonV.y);
+		virtualPad.allowSwiping = false;
 	}
 
 	function addHelpScreen()
 	{
-		var str:Array<String> = ["CAMERA",
+		var str:Array<String> =
+		#if !mobile
+		["CAMERA",
 		"E/Q - Camera Zoom In/Out",
 		"J/K/L/I - Move Camera",
 		"R - Reset Camera Zoom",
@@ -187,6 +209,22 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 		"F12 - Toggle Silhouettes",
 		"Hold Shift - Move Offsets 10x faster and Camera 4x faster",
 		"Hold Control - Move camera 4x slower"];
+		#else
+		["CAMERA",
+		"X/Y - Camera Zoom In/Out",
+		"Swipe - Move Camera",
+		"Z - Reset Camera Zoom",
+		"",
+		"CHARACTER",
+		"A - Reset Current Offset",
+		"V/D - Previous/Next Animation",
+		"G - Replay Animation",
+		"Arrow Keys - Move Offset",
+		"",
+		"OTHER",
+		"S - Toggle Silhouettes",
+		"Hold C - Move Offsets 10x faster"];
+		#end
 
 		helpBg = new FlxSprite().makeGraphic(1, 1, FlxColor.BLACK);
 		helpBg.scale.set(FlxG.width, FlxG.height);
@@ -858,6 +896,9 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 	var holdingFrameTime:Float = 0;
 	var holdingFrameElapsed:Float = 0;
 	var undoOffsets:Array<Float> = null;
+	#if mobile
+	var prevZoom:Float = 1;
+	#end
 	override function update(elapsed:Float)
 	{
 		super.update(elapsed);
@@ -872,7 +913,7 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 		var shiftMult:Float = 1;
 		var ctrlMult:Float = 1;
 		var shiftMultBig:Float = 1;
-		if(FlxG.keys.pressed.SHIFT)
+		if(FlxG.keys.pressed.SHIFT || virtualPad.buttonC.pressed)
 		{
 			shiftMult = 4;
 			shiftMultBig = 10;
@@ -886,15 +927,28 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 		if (FlxG.keys.pressed.I) FlxG.camera.scroll.y -= elapsed * 500 * shiftMult * ctrlMult;
 
 		var lastZoom = FlxG.camera.zoom;
-		if(FlxG.keys.justPressed.R && !FlxG.keys.pressed.CONTROL) FlxG.camera.zoom = 1;
-		else if (FlxG.keys.pressed.E && FlxG.camera.zoom < 3) {
+		if(FlxG.keys.justPressed.R && !FlxG.keys.pressed.CONTROL || virtualPad.buttonZ.justPressed) FlxG.camera.zoom = 1;
+		else if ((FlxG.keys.pressed.E || virtualPad.buttonX.pressed) && FlxG.camera.zoom < 3) {
 			FlxG.camera.zoom += elapsed * FlxG.camera.zoom * shiftMult * ctrlMult;
 			if(FlxG.camera.zoom > 3) FlxG.camera.zoom = 3;
 		}
-		else if (FlxG.keys.pressed.Q && FlxG.camera.zoom > 0.1) {
+		else if ((FlxG.keys.pressed.Q || virtualPad.buttonY.pressed) && FlxG.camera.zoom > 0.1) {
 			FlxG.camera.zoom -= elapsed * FlxG.camera.zoom * shiftMult * ctrlMult;
 			if(FlxG.camera.zoom < 0.1) FlxG.camera.zoom = 0.1;
 		}
+
+		#if mobile
+		if (TouchUtil.input != null && TouchUtil.input.pressed && !TouchUtil.initiallyOverlapped([virtualPad], camControls, null, [TouchUtil.input]) && !TouchUtil.initiallyOverlapped([UI_box, UI_characterbox], camHUD, null, [TouchUtil.input])) {
+			// if (FlxG.touches.list.length < 2) { // Move camera
+				FlxG.camera.scroll.x -= TouchUtil.input.deltaScreenX;
+				FlxG.camera.scroll.y -= TouchUtil.input.deltaScreenY;
+			/* }
+			else { // Zoom
+				// zooming by pinching
+				// i'll figure out the math for this later ugggggggggggggggghhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+			} */
+		}
+		#end
 
 		if(lastZoom != FlxG.camera.zoom) cameraZoomText.text = 'Zoom: ' + FlxMath.roundDecimal(FlxG.camera.zoom, 2) + 'x';
 
@@ -902,8 +956,8 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 		var changedAnim:Bool = false;
 		if(anims.length > 1)
 		{
-			if(FlxG.keys.justPressed.W && (changedAnim = true)) curAnim--;
-			else if(FlxG.keys.justPressed.S && (changedAnim = true)) curAnim++;
+			if((FlxG.keys.justPressed.W || virtualPad.buttonV.justPressed) && (changedAnim = true)) curAnim--;
+			else if((FlxG.keys.justPressed.S || virtualPad.buttonD.justPressed) && (changedAnim = true)) curAnim++;
 
 			if(changedAnim)
 			{
@@ -915,8 +969,8 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 		}
 
 		var changedOffset = false;
-		var moveKeysP = [FlxG.keys.justPressed.LEFT, FlxG.keys.justPressed.RIGHT, FlxG.keys.justPressed.UP, FlxG.keys.justPressed.DOWN];
-		var moveKeys = [FlxG.keys.pressed.LEFT, FlxG.keys.pressed.RIGHT, FlxG.keys.pressed.UP, FlxG.keys.pressed.DOWN];
+		var moveKeysP = #if !mobile [FlxG.keys.justPressed.LEFT, FlxG.keys.justPressed.RIGHT, FlxG.keys.justPressed.UP, FlxG.keys.justPressed.DOWN] #else [virtualPad.buttonLeft.justPressed, virtualPad.buttonRight.justPressed, virtualPad.buttonUp.justPressed, virtualPad.buttonDown.justPressed] #end;
+		var moveKeys = #if !mobile [FlxG.keys.pressed.LEFT, FlxG.keys.pressed.RIGHT, FlxG.keys.pressed.UP, FlxG.keys.pressed.DOWN] #else [virtualPad.buttonLeft.pressed, virtualPad.buttonRight.pressed, virtualPad.buttonUp.pressed, virtualPad.buttonDown.pressed] #end;
 		if(moveKeysP.contains(true))
 		{
 			character.offset.x += ((moveKeysP[0] ? 1 : 0) - (moveKeysP[1] ? 1 : 0)) * shiftMultBig;
@@ -977,6 +1031,13 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 			}
 		}
 
+		if(virtualPad.buttonA.justPressed)
+		{
+			undoOffsets = [character.offset.x, character.offset.y];
+			character.offset.set(0, 0);
+			changedOffset = true;
+		}
+
 		var anim = anims[curAnim];
 		if(changedOffset && anim != null && anim.offsets != null)
 		{
@@ -998,7 +1059,7 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 			}
 			else holdingFrameTime = 0;
 
-			if(FlxG.keys.justPressed.SPACE)
+			if(FlxG.keys.justPressed.SPACE || virtualPad.buttonG.justPressed)
 				character.playAnim(character.getAnimationName(), true);
 
 			var frames:Int = -1;
@@ -1040,15 +1101,19 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 		frameAdvanceText.color = clr;
 
 		// OTHER CONTROLS
-		if(FlxG.keys.justPressed.F12)
+		if(FlxG.keys.justPressed.F12 || virtualPad.buttonS.justPressed)
 			silhouettes.visible = !silhouettes.visible;
 
-		if(FlxG.keys.justPressed.F1 || (helpBg.visible && FlxG.keys.justPressed.ESCAPE))
+		if(FlxG.keys.justPressed.F1 || virtualPad.buttonF.justPressed || (helpBg.visible && FlxG.keys.justPressed.ESCAPE))
 		{
 			helpBg.visible = !helpBg.visible;
 			helpTexts.visible = helpBg.visible;
+			for (s in virtualPad) {
+				if (s == virtualPad.buttonF) continue;
+				s.exists = !helpBg.visible;
+			}
 		}
-		else if(FlxG.keys.justPressed.ESCAPE)
+		else if(FlxG.keys.justPressed.ESCAPE || virtualPad.buttonB.justPressed #if android || FlxG.android.justReleased.BACK #end)
 		{
 			if(!_goToPlayState)
 			{
@@ -1244,14 +1309,18 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 	}
 
 	// save
+	#if !mobile
 	var _file:FileReference;
+	#end
 	function onSaveComplete(_):Void
 	{
+		#if !mobile
 		if(_file == null) return;
 		_file.removeEventListener(Event.COMPLETE, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
+		#end
 		FlxG.log.notice("Successfully saved file.");
 	}
 
@@ -1260,11 +1329,13 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 		*/
 	function onSaveCancel(_):Void
 	{
+		#if !mobile
 		if(_file == null) return;
 		_file.removeEventListener(Event.COMPLETE, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
+		#end
 	}
 
 	/**
@@ -1272,16 +1343,20 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 		*/
 	function onSaveError(_):Void
 	{
+		#if !mobile
 		if(_file == null) return;
 		_file.removeEventListener(Event.COMPLETE, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
+		#end
 		FlxG.log.error("Problem saving file");
 	}
 
 	function saveCharacter() {
+		#if !mobile
 		if(_file != null) return;
+		#end
 
 		var json:Dynamic = {
 			"animations": character.animationsArray,
@@ -1304,11 +1379,15 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 
 		if (data.length > 0)
 		{
+			#if !mobile
 			_file = new FileReference();
 			_file.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
 			_file.addEventListener(Event.CANCEL, onSaveCancel);
 			_file.addEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 			_file.save(data, '$_char.json');
+			#elseif android
+			FileExplorer.saveFile(data, MIMEType.JSON, '$_char.json', onSaveComplete, ()->onSaveCancel(null), ()->onSaveError(null));
+			#end
 		}
 	}
 }

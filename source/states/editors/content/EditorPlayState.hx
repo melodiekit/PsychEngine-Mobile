@@ -13,6 +13,8 @@ import flixel.animation.FlxAnimationController;
 import flixel.input.keyboard.FlxKey;
 import openfl.events.KeyboardEvent;
 
+import mobile.objects.TouchButton;
+
 class EditorPlayState extends MusicBeatSubstate
 {
 	// Borrowed from original PlayState
@@ -133,7 +135,7 @@ class EditorPlayState extends MusicBeatSubstate
 		dataTxt.borderSize = 1.25;
 		add(dataTxt);
 
-		var tipText:FlxText = new FlxText(10, FlxG.height - 24, 0, 'Press ESC to Go Back to Chart Editor', 16);
+		var tipText:FlxText = new FlxText(10, FlxG.height - 24, 0, 'Press ' + #if !mobile 'ESC' #else 'BACK' #end + ' to Go Back to Chart Editor', 16);
 		tipText.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		tipText.borderSize = 2;
 		tipText.scrollFactor.set();
@@ -156,11 +158,15 @@ class EditorPlayState extends MusicBeatSubstate
 		super.create();
 
 		cameras = [FlxG.cameras.list[FlxG.cameras.list.length - 1]];
+
+		addMobileControls();
+		mobileControls.currentMode.onPressed.add(onButtonPress);
+		mobileControls.currentMode.onReleased.add(onButtonRelease);
 	}
 
 	override function update(elapsed:Float)
 	{
-		if(controls.BACK || FlxG.keys.justPressed.ESCAPE || FlxG.keys.justPressed.F12)
+		if(controls.BACK || FlxG.keys.justPressed.ESCAPE || FlxG.keys.justPressed.F12 #if android || FlxG.android.justReleased.BACK #end)
 		{
 			endSong();
 			super.update(elapsed);
@@ -267,7 +273,7 @@ class EditorPlayState extends MusicBeatSubstate
 	{
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, onKeyPress);
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, onKeyRelease);
-		FlxG.mouse.visible = true;
+		#if !mobile FlxG.mouse.visible = true; #end
 		NoteSplash.configs.clear();
 		FlxG.sound.list.remove(inst);
 		flixel.util.FlxDestroyUtil.destroy(inst);
@@ -718,6 +724,13 @@ class EditorPlayState extends MusicBeatSubstate
 		}
 	}
 
+	private function onButtonPress(button:TouchButton):Void
+	{
+		if (button != null && button.justPressed) {
+			keyPressed(button.IDs[0].toString().startsWith('NOTE') ? button.IDs[0] : button.IDs[1]);
+		}
+	}
+
 	private function onKeyRelease(event:KeyboardEvent):Void
 	{
 		var eventKey:FlxKey = event.keyCode;
@@ -725,6 +738,13 @@ class EditorPlayState extends MusicBeatSubstate
 		//trace('Pressed: ' + eventKey);
 
 		if(!controls.controllerMode && key > -1) keyReleased(key);
+	}
+
+	private function onButtonRelease(button:TouchButton):Void
+	{
+		if (button != null && button.justReleased) {
+			keyReleased(button.IDs[0].toString().startsWith('NOTE') ? button.IDs[0] : button.IDs[1]);
+		}
 	}
 
 	private function keyReleased(key:Int)

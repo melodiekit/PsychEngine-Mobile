@@ -130,6 +130,8 @@ class GameOverSubstate extends MusicBeatSubstate
 		}
 
 		super.create();
+
+		addVirtualPad(NONE, A_B);
 	}
 
 	override function update(elapsed:Float)
@@ -156,7 +158,7 @@ class GameOverSubstate extends MusicBeatSubstate
 			{
 				endBullshit();
 			}
-			else if (controls.BACK)
+			else if (controls.BACK #if android || FlxG.android.justReleased.BACK #end)
 			{
 				#if DISCORD_ALLOWED DiscordClient.resetClientID(); #end
 				FlxG.camera.visible = false;

@@ -125,6 +125,8 @@ class AchievementsMenuState extends MusicBeatState
 		
 		FlxG.camera.follow(camFollow, null, 0.15);
 		FlxG.camera.scroll.y = -FlxG.height;
+
+		addVirtualPad(LEFT_FULL, B_C);
 	}
 
 	function makeAchievement(achievement:String, data:Achievement, unlocked:Bool, mod:String = null)
@@ -197,18 +199,26 @@ class AchievementsMenuState extends MusicBeatState
 				}
 			}
 			
-			if(controls.RESET && (options[curSelected].unlocked || options[curSelected].curProgress > 0))
+			if((controls.RESET || virtualPad.buttonC.justPressed) && (options[curSelected].unlocked || options[curSelected].curProgress > 0))
 			{
+				virtualPad.visible = false;
 				openSubState(new ResetAchievementSubstate());
 			}
 		}
 
-		if (controls.BACK) {
+		if (controls.BACK #if android || FlxG.android.justReleased.BACK #end) {
 			FlxG.sound.play(Paths.sound('cancelMenu'));
 			MusicBeatState.switchState(new MainMenuState());
 			goingBack = true;
 		}
 		super.update(elapsed);
+	}
+
+	override function closeSubState()
+	{
+		virtualPad.visible = true;
+		FlxG.inputs.reset();
+		super.closeSubState();
 	}
 
 	public var barTween:FlxTween = null;
@@ -290,6 +300,8 @@ class ResetAchievementSubstate extends MusicBeatSubstate
 		noText.scrollFactor.set();
 		add(noText);
 		updateOptions();
+
+		addVirtualPad(LEFT_RIGHT, A_B);
 	}
 
 	override function update(elapsed:Float)

@@ -41,6 +41,8 @@ import objects.*;
 import states.stages.*;
 import states.stages.objects.*;
 
+import mobile.objects.TouchButton;
+
 #if LUA_ALLOWED
 import psychlua.*;
 #else
@@ -640,6 +642,10 @@ class PlayState extends MusicBeatState
 		cachePopUpScore();
 
 		if(eventNotes.length < 1) checkEventNote();
+
+		addMobileControls();
+		mobileControls.currentMode.onPressed.add(onButtonPress);
+		mobileControls.currentMode.onReleased.add(onButtonRelease);
 	}
 
 	function set_songSpeed(value:Float):Float
@@ -1697,7 +1703,7 @@ class PlayState extends MusicBeatState
 			botplayTxt.alpha = 1 - Math.sin((Math.PI * botplaySine) / 180);
 		}
 
-		if (controls.PAUSE && startedCountdown && canPause)
+		if ((controls.PAUSE #if android || FlxG.android.justReleased.BACK #end) && startedCountdown && canPause)
 		{
 			var ret:Dynamic = callOnScripts('onPause', null, true);
 			if(ret != LuaUtils.Function_Stop) {
@@ -2705,6 +2711,13 @@ class PlayState extends MusicBeatState
 		}
 	}
 
+	private function onButtonPress(button:TouchButton):Void
+	{
+		if (button != null && button.justPressed) {
+			keyPressed(button.IDs[0].toString().startsWith('NOTE') ? button.IDs[0] : button.IDs[1]);
+		}
+	}
+
 	private function keyPressed(key:Int)
 	{
 		if(cpuControlled || paused || inCutscene || key < 0 || key >= playerStrums.length || !generatedMusic || endingSong || boyfriend.stunned) return;
@@ -2781,6 +2794,13 @@ class PlayState extends MusicBeatState
 		var eventKey:FlxKey = event.keyCode;
 		var key:Int = getKeyFromEvent(keysArray, eventKey);
 		if(!controls.controllerMode && key > -1) keyReleased(key);
+	}
+
+	private function onButtonRelease(button:TouchButton):Void
+	{
+		if (button != null && button.justReleased) {
+			keyReleased(button.IDs[0].toString().startsWith('NOTE') ? button.IDs[0] : button.IDs[1]);
+		}
 	}
 
 	private function keyReleased(key:Int)

@@ -17,6 +17,10 @@ import objects.MenuItem;
 import states.editors.MasterEditorMenu;
 import states.editors.content.Prompt;
 
+#if android
+import mobile.external.android.FileExplorer;
+#end
+
 class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.PsychUIEvent
 {
 	var txtWeekTitle:FlxText;
@@ -97,14 +101,16 @@ class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.Psyc
 		addEditorBox();
 		reloadAllShit();
 
-		FlxG.mouse.visible = true;
+		#if !mobile FlxG.mouse.visible = true; #end
 
 		super.create();
+
+		addVirtualPad(NONE, B);
 	}
 
 	var UI_box:PsychUIBox;
 	function addEditorBox() {
-		UI_box = new PsychUIBox(FlxG.width, FlxG.height, 250, 375, ['Other', 'Week']);
+		UI_box = new PsychUIBox(FlxG.width, FlxG.height #if mobile - 150 #end, 250, 375, ['Other', 'Week']);
 		UI_box.x -= UI_box.width;
 		UI_box.y -= UI_box.height;
 		UI_box.scrollFactor.set();
@@ -398,7 +404,7 @@ class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.Psyc
 		if(PsychUIInputText.focusOn == null)
 		{
 			ClientPrefs.toggleVolumeKeys(true);
-			if(FlxG.keys.justPressed.ESCAPE)
+			if(FlxG.keys.justPressed.ESCAPE || virtualPad.buttonB.justPressed #if android || FlxG.android.justReleased.BACK #end)
 			{
 				if(!unsavedProgress)
 				{
@@ -421,28 +427,40 @@ class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.Psyc
 		lock.x = weekThing.width + 10 + weekThing.x;
 	}
 
+	#if !mobile
 	private static var _file:FileReference;
+	#end
 	public static function loadWeek() {
 		var jsonFilter:FileFilter = new FileFilter('JSON', 'json');
+		#if !mobile
 		_file = new FileReference();
 		_file.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
 		_file.addEventListener(Event.CANCEL, onLoadCancel);
 		_file.addEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file.browse([#if !mac jsonFilter #end]);
+		#elseif android
+		FileExplorer.selectFile(MIMEType.filterToMIME([jsonFilter]), onLoadComplete, ()->onLoadCancel(null), ()->onLoadError(null));
+		#end
 	}
 	
 	public static var loadedWeek:WeekFile = null;
 	public static var loadError:Bool = false;
-	private static function onLoadComplete(_):Void
+	private static function onLoadComplete(data:Dynamic):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
+		#end
 
 		#if sys
 		var fullPath:String = null;
+		#if !mobile
 		@:privateAccess
 		if(_file.__path != null) fullPath = _file.__path;
+		#else
+		if(data != null) fullPath = data;
+		#end
 
 		if(fullPath != null) {
 			var rawJson:String = File.getContent(fullPath);
@@ -450,12 +468,18 @@ class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.Psyc
 				loadedWeek = cast Json.parse(rawJson);
 				if(loadedWeek.weekCharacters != null && loadedWeek.weekName != null) //Make sure it's really a week
 				{
+					#if !mobile
 					var cutName:String = _file.name.substr(0, _file.name.length - 5);
+					#else
+					var cutName:String = new haxe.io.Path(data).file;
+					#end
 					trace("Successfully loaded file: " + cutName);
 					loadError = false;
 
 					weekFileName = cutName;
+					#if !mobile
 					_file = null;
+					#end
 					unsavedProgress = false;
 					return;
 				}
@@ -463,7 +487,9 @@ class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.Psyc
 		}
 		loadError = true;
 		loadedWeek = null;
+		#if !mobile
 		_file = null;
+		#end
 		#else
 		trace("File couldn't be loaded! You aren't on Desktop, are you?");
 		#end
@@ -472,12 +498,14 @@ class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.Psyc
 	/**
 		* Called when the save file dialog is cancelled.
 		*/
-		private static function onLoadCancel(_):Void
+	private static function onLoadCancel(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file = null;
+		#end
 		trace("Cancelled file loading.");
 	}
 
@@ -486,10 +514,12 @@ class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.Psyc
 		*/
 	private static function onLoadError(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file = null;
+		#end
 		trace("Problem loading file");
 	}
 
@@ -497,20 +527,26 @@ class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.Psyc
 		var data:String = haxe.Json.stringify(weekFile, "\t");
 		if (data.length > 0)
 		{
+			#if !mobile
 			_file = new FileReference();
 			_file.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
 			_file.addEventListener(Event.CANCEL, onSaveCancel);
 			_file.addEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 			_file.save(data, weekFileName + ".json");
+			#elseif android
+			FileExplorer.saveFile(data, MIMEType.JSON, weekFileName + '.json', onSaveComplete, ()->onSaveCancel(null), ()->onSaveError(null));
+			#end
 		}
 	}
 	
 	private static function onSaveComplete(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
+		#end
 		FlxG.log.notice("Successfully saved file.");
 		unsavedProgress = false;
 	}
@@ -518,12 +554,14 @@ class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.Psyc
 	/**
 		* Called when the save file dialog is cancelled.
 		*/
-		private static function onSaveCancel(_):Void
+	private static function onSaveCancel(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
+		#end
 		trace("Cancelled file saving.");
 	}
 
@@ -532,10 +570,12 @@ class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.Psyc
 		*/
 	private static function onSaveError(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
+		#end
 		FlxG.log.error("Problem saving file");
 	}
 }
@@ -589,6 +629,8 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 		addEditorBox();
 		changeSelection();
 		super.create();
+
+		addVirtualPad(UP_DOWN, B);
 	}
 	
 	var UI_box:PsychUIBox;
@@ -597,7 +639,7 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 			{name: 'Freeplay', label: 'Freeplay'},
 		];
 		UI_box = new PsychUIBox(FlxG.width, FlxG.height, 250, 200, ['Freeplay']);
-		UI_box.x -= UI_box.width + 100;
+		UI_box.x -= UI_box.width + 100 #if mobile + 50 #end;
 		UI_box.y -= UI_box.height + 60;
 		UI_box.scrollFactor.set();
 		addFreeplayUI();
@@ -755,7 +797,7 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 		else
 		{
 			ClientPrefs.toggleVolumeKeys(true);
-			if(FlxG.keys.justPressed.ESCAPE) {
+			if(FlxG.keys.justPressed.ESCAPE || virtualPad.buttonB.justPressed #if android || FlxG.android.justReleased.BACK #end) {
 				if(!WeekEditorState.unsavedProgress)
 				{
 					MusicBeatState.switchState(new MasterEditorMenu());

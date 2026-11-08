@@ -8,6 +8,7 @@ class OptionsState extends MusicBeatState
 	var options:Array<String> = [
 		'Note Colors',
 		'Controls',
+		#if mobile 'Mobile', #end
 		'Adjust Delay and Combo',
 		'Graphics',
 		'Visuals',
@@ -20,12 +21,17 @@ class OptionsState extends MusicBeatState
 	public static var onPlayState:Bool = false;
 
 	function openSelectedSubstate(label:String) {
+		virtualPad.visible = false;
 		switch(label)
 		{
 			case 'Note Colors':
 				openSubState(new options.NotesColorSubState());
 			case 'Controls':
 				openSubState(new options.ControlsSubState());
+			#if mobile
+			case 'Mobile':
+				openSubState(new mobile.options.MobileSettingsSubState());
+			#end
 			case 'Graphics':
 				openSubState(new options.GraphicsSettingsSubState());
 			case 'Visuals':
@@ -33,6 +39,7 @@ class OptionsState extends MusicBeatState
 			case 'Gameplay':
 				openSubState(new options.GameplaySettingsSubState());
 			case 'Adjust Delay and Combo':
+				virtualPad.visible = true; // lol
 				MusicBeatState.switchState(new options.NoteOffsetState());
 			case 'Language':
 				openSubState(new options.LanguageSubState());
@@ -76,6 +83,8 @@ class OptionsState extends MusicBeatState
 		ClientPrefs.saveSettings();
 
 		super.create();
+
+		addVirtualPad(UP_DOWN, A_B_C);
 	}
 
 	override function closeSubState()
@@ -85,6 +94,8 @@ class OptionsState extends MusicBeatState
 		#if DISCORD_ALLOWED
 		DiscordClient.changePresence("Options Menu", null);
 		#end
+		if (virtualPad != null) virtualPad.visible = true;
+		FlxG.inputs.reset();
 	}
 
 	override function update(elapsed:Float) {
@@ -95,7 +106,12 @@ class OptionsState extends MusicBeatState
 		if (controls.UI_DOWN_P)
 			changeSelection(1);
 
-		if (controls.BACK)
+		if (virtualPad.buttonC.justPressed)
+		{
+			virtualPad.visible = false;
+			openSubState(new mobile.options.MobileControlsSubState());
+		}
+		else if (controls.BACK #if android || FlxG.android.justReleased.BACK #end)
 		{
 			FlxG.sound.play(Paths.sound('cancelMenu'));
 			if(onPlayState)

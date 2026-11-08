@@ -32,6 +32,8 @@ class ErrorState extends MusicBeatState
 		errorText.screenCenter();
 		add(errorText);
 		super.create();
+
+		addVirtualPad(NONE, A_B);
 	}
 
 	override function update(elapsed:Float)
@@ -41,7 +43,7 @@ class ErrorState extends MusicBeatState
 
 		if(controls.ACCEPT && acceptCallback != null)
 			acceptCallback();
-		else if(controls.BACK && backCallback != null)
+		else if((controls.BACK #if android || FlxG.android.justReleased.BACK #end) && backCallback != null)
 			backCallback();
 
 		super.update(elapsed);

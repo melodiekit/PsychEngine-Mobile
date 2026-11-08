@@ -18,6 +18,12 @@ import shaders.ColorSwap;
 import states.StoryMenuState;
 import states.MainMenuState;
 
+import mobile.backend.MobileData;
+
+#if android
+import mobile.external.android.Callbacks;
+#end
+
 typedef TitleData =
 {
 	var titlex:Float;
@@ -74,7 +80,13 @@ class TitleState extends MusicBeatState
 		{
 			ClientPrefs.loadPrefs();
 			Language.reloadPhrases();
+			MobileData.load();
+			#if android
+			Callbacks.init();
+			#end
 		}
+
+		FlxG.fixedTimestep = false;
 
 		curWacky = FlxG.random.getObject(getIntroTextShit());
 

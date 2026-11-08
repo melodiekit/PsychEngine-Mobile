@@ -11,6 +11,10 @@ import objects.MenuCharacter;
 import states.editors.content.Prompt;
 import states.editors.content.PsychJsonPrinter;
 
+#if android
+import mobile.external.android.FileExplorer;
+#end
+
 class MenuCharacterEditorState extends MusicBeatState implements PsychUIEventHandler.PsychUIEvent
 {
 	var grpWeekCharacters:FlxTypedGroup<MenuCharacter>;
@@ -54,17 +58,28 @@ class MenuCharacterEditorState extends MusicBeatState implements PsychUIEventHan
 		add(txtOffsets);
 
 		var tipText:FlxText = new FlxText(0, 540, FlxG.width,
+			#if !mobile
 			"Arrow Keys - Change Offset (Hold shift for 10x speed)
-			\nSpace - Play \"Start Press\" animation (Boyfriend Character Type)", 16);
+			\nSpace - Play \"Start Press\" animation (Boyfriend Character Type)"
+			#else
+			"Arrow Keys - Change Offset (Hold C for 10x speed)
+			\nX - Play \"Start Press\" animation (Boyfriend Character Type)"
+			#end, 16);
 		tipText.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, CENTER);
 		tipText.scrollFactor.set();
 		add(tipText);
 
 		addEditorBox();
-		FlxG.mouse.visible = true;
+		#if !mobile FlxG.mouse.visible = true; #end
 		updateCharacters();
 
 		super.create();
+
+		addVirtualPad(LEFT_FULL, B);
+		virtualPad.addAction(C);
+		virtualPad.addAction(X);
+		virtualPad.buttonC.x -= 132;
+		virtualPad.buttonX.x -= 264;
 	}
 
 	var UI_typebox:PsychUIBox;
@@ -75,11 +90,17 @@ class MenuCharacterEditorState extends MusicBeatState implements PsychUIEventHan
 		addTypeUI();
 		add(UI_typebox);
 
-		
 		UI_mainbox = new PsychUIBox(FlxG.width - 340, FlxG.height - 265, 240, 215, ['Character']);
 		UI_mainbox.scrollFactor.set();
 		addCharacterUI();
 		add(UI_mainbox);
+
+		#if mobile
+		UI_mainbox.x += 60;
+		UI_mainbox.y -= 100;
+		UI_typebox.x = FlxG.width - 165;
+		UI_typebox.y -= 340;
+		#end
 
 		var loadButton:PsychUIButton = new PsychUIButton(0, 480, "Load Character", function() {
 			loadCharacter();
@@ -212,7 +233,7 @@ class MenuCharacterEditorState extends MusicBeatState implements PsychUIEventHan
 		if(PsychUIInputText.focusOn == null)
 		{
 			ClientPrefs.toggleVolumeKeys(true);
-			if(FlxG.keys.justPressed.ESCAPE) {
+			if(FlxG.keys.justPressed.ESCAPE || virtualPad.buttonB.justPressed #if android || FlxG.android.justReleased.BACK #end) {
 				if(!unsavedProgress)
 				{
 					MusicBeatState.switchState(new states.editors.MasterEditorMenu());
@@ -222,26 +243,26 @@ class MenuCharacterEditorState extends MusicBeatState implements PsychUIEventHan
 			}
 
 			var shiftMult:Int = 1;
-			if(FlxG.keys.pressed.SHIFT) shiftMult = 10;
+			if(FlxG.keys.pressed.SHIFT || virtualPad.buttonC.pressed) shiftMult = 10;
 
-			if(FlxG.keys.justPressed.LEFT) {
+			if(FlxG.keys.justPressed.LEFT || virtualPad.buttonLeft.justPressed) {
 				characterFile.position[0] += shiftMult;
 				updateOffset();
 			}
-			if(FlxG.keys.justPressed.RIGHT) {
+			if(FlxG.keys.justPressed.RIGHT || virtualPad.buttonRight.justPressed) {
 				characterFile.position[0] -= shiftMult;
 				updateOffset();
 			}
-			if(FlxG.keys.justPressed.UP) {
+			if(FlxG.keys.justPressed.UP || virtualPad.buttonUp.justPressed) {
 				characterFile.position[1] += shiftMult;
 				updateOffset();
 			}
-			if(FlxG.keys.justPressed.DOWN) {
+			if(FlxG.keys.justPressed.DOWN || virtualPad.buttonDown.justPressed) {
 				characterFile.position[1] -= shiftMult;
 				updateOffset();
 			}
 
-			if(FlxG.keys.justPressed.SPACE && characterTypeRadio.checked == 1) {
+			if((FlxG.keys.justPressed.SPACE || virtualPad.buttonX.justPressed) && characterTypeRadio.checked == 1) {
 				grpWeekCharacters.members[characterTypeRadio.checked].animation.play('confirm', true);
 			}
 		}
@@ -261,26 +282,38 @@ class MenuCharacterEditorState extends MusicBeatState implements PsychUIEventHan
 		txtOffsets.text = '' + characterFile.position;
 	}
 
+	#if !mobile
 	var _file:FileReference = null;
+	#end
 	function loadCharacter() {
 		var jsonFilter:FileFilter = new FileFilter('JSON', 'json');
+		#if !mobile
 		_file = new FileReference();
 		_file.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
 		_file.addEventListener(Event.CANCEL, onLoadCancel);
 		_file.addEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file.browse([#if !mac jsonFilter #end]);
+		#elseif android
+		FileExplorer.selectFile(MIMEType.filterToMIME([jsonFilter]), onLoadComplete, ()->onLoadCancel(null), ()->onLoadError(null));
+		#end
 	}
 
-	function onLoadComplete(_):Void
+	function onLoadComplete(data:Dynamic):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
+		#end
 
 		#if sys
 		var fullPath:String = null;
+		#if !mobile
 		@:privateAccess
 		if(_file.__path != null) fullPath = _file.__path;
+		#else
+		if(data != null) fullPath = data;
+		#end
 
 		if(fullPath != null) {
 			var rawJson:String = File.getContent(fullPath);
@@ -288,7 +321,11 @@ class MenuCharacterEditorState extends MusicBeatState implements PsychUIEventHan
 				var loadedChar:MenuCharacterFile = cast Json.parse(rawJson);
 				if(loadedChar.idle_anim != null && loadedChar.confirm_anim != null) //Make sure it's really a character
 				{
+					#if !mobile
 					var cutName:String = _file.name.substr(0, _file.name.length - 5);
+					#else
+					var cutName:String = new haxe.io.Path(data).file;
+					#end
 					trace("Successfully loaded file: " + cutName);
 					characterFile = loadedChar;
 					reloadSelectedCharacter();
@@ -297,12 +334,16 @@ class MenuCharacterEditorState extends MusicBeatState implements PsychUIEventHan
 					confirmInputText.text = characterFile.image;
 					scaleStepper.value = characterFile.scale;
 					updateOffset();
+					#if !mobile
 					_file = null;
+					#end
 					return;
 				}
 			}
 		}
+		#if !mobile
 		_file = null;
+		#end
 		#else
 		trace("File couldn't be loaded! You aren't on Desktop, are you?");
 		#end
@@ -313,10 +354,12 @@ class MenuCharacterEditorState extends MusicBeatState implements PsychUIEventHan
 		*/
 	function onLoadCancel(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file = null;
+		#end
 		trace("Cancelled file loading.");
 	}
 
@@ -325,10 +368,12 @@ class MenuCharacterEditorState extends MusicBeatState implements PsychUIEventHan
 		*/
 	function onLoadError(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
 		_file.removeEventListener(Event.CANCEL, onLoadCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 		_file = null;
+		#end
 		trace("Problem loading file");
 	}
 
@@ -339,20 +384,26 @@ class MenuCharacterEditorState extends MusicBeatState implements PsychUIEventHan
 			var splittedImage:Array<String> = imageInputText.text.trim().split('_');
 			var characterName:String = splittedImage[splittedImage.length-1].toLowerCase().replace(' ', '');
 
+			#if !mobile
 			_file = new FileReference();
 			_file.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
 			_file.addEventListener(Event.CANCEL, onSaveCancel);
 			_file.addEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 			_file.save(data, characterName + ".json");
+			#elseif android
+			FileExplorer.saveFile(data, MIMEType.JSON, characterName + ".json", onSaveComplete, ()->onSaveCancel(null), ()->onSaveError(null));
+			#end
 		}
 	}
 
 	function onSaveComplete(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
+		#end
 		FlxG.log.notice("Successfully saved file.");
 	}
 
@@ -361,10 +412,12 @@ class MenuCharacterEditorState extends MusicBeatState implements PsychUIEventHan
 		*/
 	function onSaveCancel(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
+		#end
 	}
 
 	/**
@@ -372,10 +425,12 @@ class MenuCharacterEditorState extends MusicBeatState implements PsychUIEventHan
 		*/
 	function onSaveError(_):Void
 	{
+		#if !mobile
 		_file.removeEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
 		_file.removeEventListener(Event.CANCEL, onSaveCancel);
 		_file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 		_file = null;
+		#end
 		FlxG.log.error("Problem saving file");
 	}
 }

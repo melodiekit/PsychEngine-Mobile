@@ -174,7 +174,9 @@ class ModsMenuState extends MusicBeatState
 
 			FlxG.autoPause = false;
 			changeSelectedMod();
-			return super.create();
+			super.create();
+			addVirtualPad(NONE, B);
+			return;
 		}
 		//
 
@@ -295,6 +297,14 @@ class ModsMenuState extends MusicBeatState
 
 		changeSelectedMod();
 		super.create();
+
+		addVirtualPad(UP_DOWN, B);
+		virtualPad.buttonB.x -= 35;
+		virtualPad.buttonB.y -= 130;
+		virtualPad.buttonUp.x += 20;
+		virtualPad.buttonUp.y -= 230;
+		virtualPad.buttonDown.x += 20;
+		virtualPad.buttonDown.y = virtualPad.buttonUp.y + 127;
 	}
 	
 	var nextAttempt:Float = 1;
@@ -307,7 +317,7 @@ class ModsMenuState extends MusicBeatState
 
 	override function update(elapsed:Float)
 	{
-		if(controls.BACK && hoveringOnMods)
+		if((controls.BACK #if android || FlxG.android.justReleased.BACK #end) && hoveringOnMods)
 		{
 			saveTxt();
 
@@ -336,7 +346,7 @@ class ModsMenuState extends MusicBeatState
 		if(Math.abs(FlxG.mouse.deltaX) > 10 || Math.abs(FlxG.mouse.deltaY) > 10)
 		{
 			controls.controllerMode = false;
-			if(!FlxG.mouse.visible) FlxG.mouse.visible = true;
+			#if !mobile if(!FlxG.mouse.visible) FlxG.mouse.visible = true; #end
 		}
 		
 		if(controls.controllerMode != _lastControllerMode)
@@ -359,18 +369,18 @@ class ModsMenuState extends MusicBeatState
 			var lastMode = hoveringOnMods;
 			if(modsList.all.length > 1)
 			{
-				if(FlxG.mouse.justPressed)
+				if(TouchUtil.input?.justPressed && !TouchUtil.initiallyOverlapped([virtualPad], camControls))
 				{
 					for (i in centerMod-2...centerMod+3)
 					{
 						var mod = modsGroup.members[i];
-						if(mod != null && mod.visible && FlxG.mouse.overlaps(mod))
+						if(mod != null && mod.visible && TouchUtil.input?.overlaps(mod))
 						{
 							hoveringOnMods = true;
 							var button = getButton();
 							button.ignoreCheck = button.onFocus = false;
-							mouseOffsets.x = FlxG.mouse.x - mod.x;
-							mouseOffsets.y = FlxG.mouse.y - mod.y;
+							mouseOffsets.x = TouchUtil.input?.x - mod.x;
+							mouseOffsets.y = TouchUtil.input?.y - mod.y;
 							curSelectedMod = i;
 							changeSelectedMod();
 							break;
@@ -404,12 +414,12 @@ class ModsMenuState extends MusicBeatState
 						holdTime += elapsed;
 						if(holdTime > 0.5 && Math.floor(lastHoldTime * 8) != Math.floor(holdTime * 8)) changeSelectedMod(shiftMult * (controls.UI_UP ? -1 : 1));
 					}
-					else if(FlxG.mouse.pressed && !gottaClickAgain)
+					else if(TouchUtil.input?.pressed && !gottaClickAgain && !TouchUtil.initiallyOverlapped([virtualPad], camControls))
 					{
 						var curMod:ModItem = modsGroup.members[curSelectedMod];
 						if(curMod != null)
 						{
-							if(!holdingMod && FlxG.mouse.justMoved && FlxG.mouse.overlaps(curMod)) holdingMod = true;
+							if(!holdingMod && TouchUtil.input?.justMoved && TouchUtil.input?.overlaps(curMod)) holdingMod = true;
 
 							if(holdingMod)
 							{
@@ -417,7 +427,7 @@ class ModsMenuState extends MusicBeatState
 								for (i in centerMod-2...centerMod+3)
 								{
 									var mod = modsGroup.members[i];
-									if(mod != null && mod.visible && FlxG.mouse.overlaps(mod) && curSelectedMod != i)
+									if(mod != null && mod.visible && TouchUtil.input?.overlaps(mod) && curSelectedMod != i)
 									{
 										moveModToPosition(i);
 										moved = true;
@@ -428,10 +438,10 @@ class ModsMenuState extends MusicBeatState
 								if(!moved)
 								{
 									var factor:Float = -1;
-									if(FlxG.mouse.y < bgList.y)
-										factor = Math.abs(Math.max(0.2, Math.min(0.5, 0.5 - (bgList.y - FlxG.mouse.y) / 100)));
-									else if(FlxG.mouse.y > bgList.y + bgList.height)
-										factor = Math.abs(Math.max(0.2, Math.min(0.5, 0.5 - (FlxG.mouse.y - bgList.y - bgList.height) / 100)));
+									if(TouchUtil.input?.y < bgList.y)
+										factor = Math.abs(Math.max(0.2, Math.min(0.5, 0.5 - (bgList.y - TouchUtil.input?.y) / 100)));
+									else if(TouchUtil.input?.y > bgList.y + bgList.height)
+										factor = Math.abs(Math.max(0.2, Math.min(0.5, 0.5 - (TouchUtil.input?.y - bgList.y - bgList.height) / 100)));
 		
 									if(factor >= 0)
 									{
@@ -440,19 +450,19 @@ class ModsMenuState extends MusicBeatState
 										{
 											holdingElapsed = 0;
 											var newPos = curSelectedMod;
-											if(FlxG.mouse.y < bgList.y) newPos--;
+											if(TouchUtil.input?.y < bgList.y) newPos--;
 											else newPos++;
 											moveModToPosition(Std.int(Math.max(0, Math.min(modsGroup.length - 1, newPos))));
 										}
 									}
 								}
-								curMod.x = FlxG.mouse.x - mouseOffsets.x;
-								curMod.y = FlxG.mouse.y - mouseOffsets.y;
+								curMod.x = TouchUtil.input?.x - mouseOffsets.x;
+								curMod.y = TouchUtil.input?.y - mouseOffsets.y;
 							}
 						}
 						
 					}
-					else if(FlxG.mouse.justReleased && holdingMod)
+					else if(TouchUtil.input?.justReleased && holdingMod)
 					{
 						holdingMod = false;
 						holdingElapsed = 0;
@@ -625,7 +635,8 @@ class ModsMenuState extends MusicBeatState
 			curSelectedMod = max;
 			limited = true;
 		}
-		
+
+		#if !mobile
 		if(!isMouseWheel && limited && Math.abs(add) == 1)
 		{
 			if(add < 0) // pressed up on first mod
@@ -645,7 +656,8 @@ class ModsMenuState extends MusicBeatState
 				return;
 			}
 		}
-		
+		#end
+
 		holdingMod = false;
 		holdingElapsed = 0;
 		gottaClickAgain = true;
@@ -829,9 +841,7 @@ class ModItem extends FlxSpriteGroup
 			{
 				var errorTitle = 'Mod name: ' + Mods.currentModDirectory;
 				var errorMsg = 'An error occurred: $e';
-				#if windows
 				lime.app.Application.current.window.alert(errorMsg, errorTitle);
-				#end
 				trace('$errorTitle - $errorMsg');
 			}
 		}
@@ -960,17 +970,17 @@ class MenuButton extends FlxSpriteGroup
 			return;
 		}
 
-		if(!ignoreCheck && !Controls.instance.controllerMode && (FlxG.mouse.justPressed || FlxG.mouse.justMoved) && FlxG.mouse.visible)
-			onFocus = FlxG.mouse.overlaps(this);
+		if(!ignoreCheck && !Controls.instance.controllerMode && (TouchUtil.input?.justPressed || TouchUtil.input?.justMoved) #if !mobile && FlxG.mouse.visible #end)
+			onFocus = TouchUtil.input?.overlaps(this);
 		
-		if(onFocus && onClick != null && FlxG.mouse.justPressed)
+		if(onFocus && onClick != null && TouchUtil.input?.justPressed)
 			onClick();
 
 		if(_needACheck)
 		{
 			_needACheck = false;
 			if(!Controls.instance.controllerMode)
-				setButtonVisibility(FlxG.mouse.overlaps(this));
+				setButtonVisibility(TouchUtil.input?.overlaps(this));
 		}
 	}
 

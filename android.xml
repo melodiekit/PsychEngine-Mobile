@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project>
+	<!-- ADD <include path="android.xml" if="android" /> IN THE PROJECT.XML TO USE THIS -->
+
+	<haxelib name="extension-androidtools" version="2.2.2" if="android" />
+	<!-- Compile 64-bit only -->
+	<architecture name="arm64" exclude="armv7" if="android" />
+	<android target-sdk-version="35" />
+	<android minimum-sdk-version="28" />
+	<!-- Signing the app -->
+	<certificate path="key.keystore" password="psychengine" alias="psychmobile" alias-password="psychmobile" if="android" unless="debug" />
+
+	<!-- Setting gradle versions-->
+	<config:android gradle-version="8.9" />
+    <config:android gradle-plugin="8.7.3" />
+
+	<!-- Permissions -->
+	<!-- To check for updates -->
+	<config:android permission="android.permission.INTERNET" />
+	<!-- External directory access -->
+	<!-- Android 10 and below -->
+	<config:android permission="android.permission.READ_EXTERNAL_STORAGE" />
+	<config:android permission="android.permission.WRITE_EXTERNAL_STORAGE" />
+	<!-- Android 11+ -->
+	<config:android permission="android.permission.MANAGE_EXTERNAL_STORAGE" />
+   
+	<!-- Allows extending into the display cutout -->
+	<config:android layoutInDisplayCutoutMode="shortEdges" if="${lime >= 8.3.0}" />
+
+	<config:android>
+		<!-- Allow external storage on Android 10 and below -->
+		<application android:requestLegacyExternalStorage="true" />
+		<application android:preserveLegacyExternalStorage="true" />
+		<application android:largeHeap="true" />
+		<application android:icon="@drawable/icon" />
+		<application android:theme="@style/LimeAppMainTheme" />
+		<gradle-properties org.gradle.jvmargs='-Xmx4G' />
+	</config:android>
+
+	<!-- Templates to enable some stuff -->
+	<section if="android">
+		<template path="templates/android/app/build.gradle" rename="app/build.gradle" />
+		<template path="templates/android/app/src/main/res/values/themes.xml" rename="app/src/main/res/values/themes.xml" />
+		<template path="templates/android/app/src/main/res/drawable-ldpi/icon16.png" rename="app/src/main/res/drawable-ldpi/icon16.png" />
+		<template path="templates/android/app/src/main/res/drawable-mdpi/icon32.png" rename="app/src/main/res/drawable-mdpi/icon32.png" />
+		<template path="templates/android/app/src/main/res/drawable-hdpi/icon64.png" rename="app/src/main/res/drawable-hdpi/icon64.png" />
+		<template path="templates/android/app/src/main/res/drawable-xhdpi/icon.png" rename="app/src/main/res/drawable-xhdpi/icon.png" />
+		<!-- fix stupid fucking lime 8.1.2 thinjgs -->
+		<template path="dependencies/extension-api/build.gradle" rename="deps/extension-api/build.gradle" if="${lime <= 8.1.2}" />
+		<template path="templates/android/app/src/main/java/org/libsdl/app/HIDDeviceManager.java" rename="app/src/main/java/org/libsdl/app/HIDDeviceManager.java" if="${lime <= 8.1.2}" />
+	</section>
+
+	<!-- Java classes -->
+	<java path="source/mobile/external/android/java" if="android" />
+
+	<!-- Java Extensions -->
+	<dependency name="callbacks" path="source/mobile/external/android/java/psych" if="android" />
+	<android extension="psych.Callbacks" />
+</project>

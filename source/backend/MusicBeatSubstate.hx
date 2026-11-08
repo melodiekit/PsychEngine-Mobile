@@ -2,6 +2,10 @@ package backend;
 
 import flixel.FlxSubState;
 
+import mobile.backend.MobileData;
+import mobile.objects.MobileControls;
+import mobile.objects.VirtualPad;
+
 class MusicBeatSubstate extends FlxSubState
 {
 	public function new()
@@ -24,6 +28,54 @@ class MusicBeatSubstate extends FlxSubState
 
 	inline function get_controls():Controls
 		return Controls.instance;
+
+	public var camControls:FlxCamera;
+	public var mobileControls:MobileControls;
+	public function makeControlCam() {
+		if (camControls != null) return;
+		camControls = new FlxCamera();
+		camControls.bgColor.alpha = 0;
+		FlxG.cameras.add(camControls, false);
+	}
+
+	public function addMobileControls(setColors:Bool = true, addNewCamera:Bool = #if mobile true #else false #end) {
+		mobileControls = new MobileControls(MobileData.controlModes.get(ClientPrefs.data.controlMode.toUpperCase()), ClientPrefs.data.hitboxStyle);
+		if (addNewCamera) {
+			makeControlCam();
+			mobileControls.cameras = [camControls];
+		}
+		if (setColors) MobileData.setControlColor(mobileControls.currentMode);
+		add(mobileControls);
+		controls.inSubstate = true;
+	}
+
+	public function removeMobileControls() {
+		if (mobileControls == null) return;
+		remove(mobileControls);
+		mobileControls.destroy();
+		mobileControls = null;
+		controls.inSubstate = false;
+	}
+
+	public var virtualPad:VirtualPad;
+	public function addVirtualPad(dPadMode:FlxDPadMode, actionMode:FlxActionMode, addNewCamera:Bool = #if mobile true #else false #end) {
+		virtualPad = new VirtualPad(dPadMode, actionMode);
+		virtualPad.alpha = ClientPrefs.data.controlAlpha;
+		if (addNewCamera) {
+			makeControlCam();
+			virtualPad.cameras = [camControls];
+		}
+		add(virtualPad);
+		controls.inSubstate = true;
+	}
+
+	public function removeVirtualPad() {
+		if (virtualPad == null) return;
+		remove(virtualPad);
+		virtualPad.destroy();
+		virtualPad = null;
+		controls.inSubstate = false;
+	}
 
 	override function update(elapsed:Float)
 	{
@@ -49,6 +101,13 @@ class MusicBeatSubstate extends FlxSubState
 		}
 
 		super.update(elapsed);
+	}
+
+	override function destroy() {
+		FlxG.cameras.remove(camControls);
+		camControls = null;
+		controls.inSubstate = false;
+		super.destroy();
 	}
 
 	private function updateSection():Void

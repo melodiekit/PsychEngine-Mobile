@@ -92,6 +92,8 @@ class LanguageSubState extends MusicBeatSubstate
 			grpLanguages.add(text);
 		}
 		changeSelected();
+
+		addVirtualPad(UP_DOWN, A_B);
 	}
 
 	var changedLanguage:Bool = false;
@@ -107,7 +109,7 @@ class LanguageSubState extends MusicBeatSubstate
 		if(FlxG.mouse.wheel != 0)
 			changeSelected(FlxG.mouse.wheel * mult);
 
-		if(controls.BACK)
+		if(controls.BACK #if android || FlxG.android.justReleased.BACK #end)
 		{
 			if(changedLanguage)
 			{

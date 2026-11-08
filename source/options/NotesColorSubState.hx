@@ -164,9 +164,20 @@ class NotesColorSubState extends MusicBeatSubstate
 		controllerPointer.alpha = 0.6;
 		add(controllerPointer);
 		
-		FlxG.mouse.visible = !controls.controllerMode;
+		#if !mobile FlxG.mouse.visible = !controls.controllerMode; #end
 		controllerPointer.visible = controls.controllerMode;
 		_lastControllerMode = controls.controllerMode;
+
+		addVirtualPad(NONE, B);
+		virtualPad.addAction(C);
+		virtualPad.addAction(Z);
+		virtualPad.buttonB.x = 10;
+		virtualPad.buttonB.y -= 210;
+		virtualPad.buttonC.x = 10;
+		virtualPad.buttonC.y = virtualPad.buttonB.y + 140;
+		virtualPad.buttonZ.x = virtualPad.buttonC.x + 570;
+		virtualPad.buttonZ.y = virtualPad.buttonC.y;
+		virtualPad.allowSwiping = false;
 	}
 
 	function updateTip()
@@ -184,7 +195,7 @@ class NotesColorSubState extends MusicBeatSubstate
 		NUMPADSEVEN => '7', NUMPADEIGHT => '8', NUMPADNINE => '9', A => 'A', B => 'B', C => 'C', D => 'D', E => 'E', F => 'F'];
 
 	override function update(elapsed:Float) {
-		if (controls.BACK) {
+		if (controls.BACK #if android || FlxG.android.justReleased.BACK #end) {
 			FlxG.mouse.visible = false;
 			FlxG.sound.play(Paths.sound('cancelMenu'));
 			close();
@@ -202,7 +213,7 @@ class NotesColorSubState extends MusicBeatSubstate
 		if(controls.controllerMode != _lastControllerMode)
 		{
 			//trace('changed controller mode');
-			FlxG.mouse.visible = !controls.controllerMode;
+			#if !mobile FlxG.mouse.visible = !controls.controllerMode; #end
 			controllerPointer.visible = controls.controllerMode;
 
 			// changed to controller mid state
@@ -420,6 +431,7 @@ class NotesColorSubState extends MusicBeatSubstate
 			else if(pointerY() >= hexTypeLine.y && pointerY() < hexTypeLine.y + hexTypeLine.height &&
 					Math.abs(pointerX() - 1000) <= 84)
 			{
+				FlxG.stage.window.textInputEnabled = true;
 				hexTypeNum = 0;
 				for (letter in alphabetHex.letters)
 				{
@@ -467,9 +479,9 @@ class NotesColorSubState extends MusicBeatSubstate
 				}
 			} 
 		}
-		else if(controls.RESET && hexTypeNum < 0)
+		else if((controls.RESET || virtualPad.buttonC.justPressed) && hexTypeNum < 0)
 		{
-			if(FlxG.keys.pressed.SHIFT || FlxG.gamepads.anyPressed(LEFT_SHOULDER))
+			if(FlxG.keys.pressed.SHIFT || virtualPad.buttonZ.pressed || FlxG.gamepads.anyPressed(LEFT_SHOULDER))
 			{
 				for (i in 0...3)
 				{

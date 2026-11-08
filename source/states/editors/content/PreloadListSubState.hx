@@ -112,6 +112,7 @@ class PreloadListSubState extends MusicBeatSubstate implements PsychUIEvent
 		function addToList(path:Path, isFolder:Bool)
 		{
 			var exePath:String = Sys.getCwd().replace('\\', '/');
+			trace (exePath + ' - ' + path.dir);
 			if(path.dir.startsWith(exePath))
 			{
 				var pathStr:String = path.dir.substr(exePath.length);
@@ -180,7 +181,7 @@ class PreloadListSubState extends MusicBeatSubstate implements PsychUIEvent
 
 			fileDialog.openDirectory('Load a folder...', function()
 			{
-				addToList(new Path(fileDialog.path.replace('\\', '/')), true);
+				addToList(new Path(Path.addTrailingSlash(fileDialog.path.replace('\\', '/'))), true);
 			});
 		});
 		loadFolderBtn.screenCenter(X);

@@ -103,6 +103,8 @@ class BaseOptionsMenu extends MusicBeatSubstate
 
 		changeSelection();
 		reloadCheckboxes();
+
+		addVirtualPad(LEFT_FULL, A_B_C);
 	}
 
 	public function addOption(option:Option) {
@@ -139,7 +141,7 @@ class BaseOptionsMenu extends MusicBeatSubstate
 			changeSelection(1);
 		}
 
-		if (controls.BACK) {
+		if (controls.BACK #if android || FlxG.android.justReleased.BACK #end) {
 			close();
 			FlxG.sound.play(Paths.sound('cancelMenu'));
 		}
@@ -262,7 +264,7 @@ class BaseOptionsMenu extends MusicBeatSubstate
 					}
 			}
 
-			if(controls.RESET)
+			if(controls.RESET || virtualPad.buttonC.justPressed)
 			{
 				var leOption:Option = optionsArray[curSelected];
 				if(leOption.type != KEYBIND)

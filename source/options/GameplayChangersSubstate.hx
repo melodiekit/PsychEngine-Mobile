@@ -137,6 +137,8 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 
 		changeSelection();
 		reloadCheckboxes();
+
+		addVirtualPad(LEFT_FULL, A_B_C);
 	}
 
 	var nextAccept:Int = 5;
@@ -150,7 +152,7 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 		if (controls.UI_DOWN_P)
 			changeSelection(1);
 
-		if (controls.BACK)
+		if (controls.BACK #if android || FlxG.android.justReleased.BACK #end)
 		{
 			close();
 			ClientPrefs.saveSettings();
@@ -270,7 +272,7 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 					clearHold();
 			}
 
-			if(controls.RESET)
+			if(controls.RESET || virtualPad.buttonC.justPressed)
 			{
 				for (i in 0...optionsArray.length)
 				{

@@ -5,6 +5,7 @@ import flixel.effects.FlxFlicker;
 import lime.app.Application;
 import states.editors.MasterEditorMenu;
 import options.OptionsState;
+import mobile.backend.MobileData;
 
 enum MainMenuColumn {
 	LEFT;
@@ -94,10 +95,14 @@ class MainMenuState extends MusicBeatState
 			rightItem.x -= rightItem.width;
 		}
 
-		var psychVer:FlxText = new FlxText(12, FlxG.height - 44, 0, "Psych Engine v" + psychEngineVersion, 12);
+		var psychVer:FlxText = new FlxText(12, FlxG.height - 64, 0, "Psych Engine v" + psychEngineVersion, 12);
 		psychVer.scrollFactor.set();
 		psychVer.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		add(psychVer);
+		var mobileVer:FlxText = new FlxText(12, FlxG.height - 44, 0, "Mobile Build v" + MobileData.buildVersion, 12);
+		mobileVer.scrollFactor.set();
+		mobileVer.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		add(mobileVer);
 		var fnfVer:FlxText = new FlxText(12, FlxG.height - 24, 0, "Friday Night Funkin' v" + Application.current.meta.get('version'), 12);
 		fnfVer.scrollFactor.set();
 		fnfVer.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
@@ -124,6 +129,9 @@ class MainMenuState extends MusicBeatState
 		#end
 
 		FlxG.camera.follow(camFollow, null, 0.15);
+
+		addVirtualPad(NONE, E);
+		virtualPad.buttonE.y -= 250;
 	}
 
 	function createMenuItem(name:String, x:Float, y:Float):FlxSprite
@@ -161,7 +169,7 @@ class MainMenuState extends MusicBeatState
 			if (allowMouse && ((FlxG.mouse.deltaScreenX != 0 && FlxG.mouse.deltaScreenY != 0) || FlxG.mouse.justPressed)) //FlxG.mouse.deltaScreenX/Y checks is more accurate than FlxG.mouse.justMoved
 			{
 				allowMouse = false;
-				FlxG.mouse.visible = true;
+				#if !mobile FlxG.mouse.visible = true; #end
 				timeNotMoving = 0;
 
 				var selectedItem:FlxSprite;
@@ -255,7 +263,7 @@ class MainMenuState extends MusicBeatState
 					}
 			}
 
-			if (controls.BACK)
+			if (controls.BACK #if android || FlxG.android.justReleased.BACK #end)
 			{
 				selectedSomethin = true;
 				FlxG.mouse.visible = false;
@@ -338,14 +346,12 @@ class MainMenuState extends MusicBeatState
 					FlxTween.tween(memb, {alpha: 0}, 0.4, {ease: FlxEase.quadOut});
 				}
 			}
-			#if desktop
-			if (controls.justPressed('debug_1'))
+			if (controls.justPressed('debug_1') || virtualPad.buttonE.justPressed)
 			{
 				selectedSomethin = true;
 				FlxG.mouse.visible = false;
 				MusicBeatState.switchState(new MasterEditorMenu());
 			}
-			#end
 		}
 
 		super.update(elapsed);

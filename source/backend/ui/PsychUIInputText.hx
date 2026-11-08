@@ -49,6 +49,10 @@ class PsychUIInputText extends FlxSpriteGroup
 	public var caret:FlxSprite;
 	public var onChange:String->String->Void;
 
+	public var canType:Bool = true;
+	public var requireDoublePress:Bool = false;
+	public var canUnfocus:Bool = true;
+
 	public var fieldWidth(default, set):Int = 0;
 	public var maxLength(default, set):Int = 0;
 	public var passwordMask(default, set):Bool = false;
@@ -96,7 +100,7 @@ class PsychUIInputText extends FlxSpriteGroup
 	public var inInsertMode:Bool = false;
 	function onKeyDown(e:KeyboardEvent)
 	{
-		if(focusOn != this) return;
+		if(focusOn != this || !canType) return;
 
 		var keyCode:Int = e.keyCode;
 		var charCode:Int = e.charCode;
@@ -376,7 +380,10 @@ class PsychUIInputText extends FlxSpriteGroup
 	}
 
 	public dynamic function onPressEnter(e:KeyboardEvent)
+	{
+		#if mobile FlxG.stage.window.textInputEnabled = false; #end
 		focusOn = null;
+	}
 
 	public var unfocus:Void->Void;
 	public static function set_focusOn(v:PsychUIInputText)
@@ -389,42 +396,54 @@ class PsychUIInputText extends FlxSpriteGroup
 		return (focusOn = v);
 	}
 
+	var _doublePressed:Bool = false;
 	override function update(elapsed:Float)
 	{
 		super.update(elapsed);
 
-		if(FlxG.mouse.justPressed)
+		if(TouchUtil.justPressed)
 		{
-			if(FlxG.mouse.overlaps(behindText, camera))
+			if(TouchUtil.overlaps(behindText, camera))
 			{
-				if(!FlxG.keys.pressed.SHIFT) selectIndex = -1;
-				else if(selectIndex == -1) selectIndex = caretIndex;
-				focusOn = this;
-				caretIndex = 0;
-				var lastBound:Float = 0;
-				var textObjX:Float = textObj.getScreenPosition(camera).x;
-				var mousePosX:Float = FlxG.mouse.getScreenPosition(camera).x;
-				var txtX:Float = textObjX - textObj.textField.scrollH;
-
-				for (i => bound in _boundaries)
+				if (!requireDoublePress || _doublePressed)
 				{
-					if(mousePosX >= txtX + (bound - lastBound)/2)
-					{
-						caretIndex = i+1;
-						txtX += bound - lastBound;
-						lastBound = bound;
-					}
-					else break;
-				}
-				updateCaret();
-			}
-			else if(focusOn == this)
-				focusOn = null;
+					if(!FlxG.keys.pressed.SHIFT) selectIndex = -1;
+					else if(selectIndex == -1) selectIndex = caretIndex;
+					focusOn = this;
+					canType = true;
+					caretIndex = 0;
+					#if mobile FlxG.stage.window.textInputEnabled = true; #end
+					var lastBound:Float = 0;
+					var textObjX:Float = textObj.getScreenPosition(camera).x;
+					var mousePosX:Float = TouchUtil.input.getScreenPosition(camera).x;
+					var txtX:Float = textObjX - textObj.textField.scrollH;
 
+					for (i => bound in _boundaries)
+					{
+						if(mousePosX >= txtX + (bound - lastBound)/2)
+						{
+							caretIndex = i+1;
+							txtX += bound - lastBound;
+							lastBound = bound;
+						}
+						else break;
+					}
+					updateCaret();
+				}
+				_doublePressed = true;
+			}
 			//trace('changed focus to: ' + this);
 		}
+		else if(TouchUtil.justReleased #if mobile && !TouchUtil.swiped #end)
+		{
+			if(canUnfocus && !TouchUtil.overlaps(behindText, camera))
+			{
+				removeFocus();
+			}
+			if(!canUnfocus) canUnfocus = true;
+		}
 
-		if(focusOn == this)
+		if(focusOn == this && canType)
 		{
 			_caretTime = (_caretTime + elapsed) % 1;
 			if(textObj != null && textObj.exists)
@@ -518,6 +537,17 @@ class PsychUIInputText extends FlxSpriteGroup
 			}
 		}
 		else if(text.length > 0) textObj.removeFormat(selectedFormat);
+	}
+
+	public function removeFocus()
+	{
+		if(focusOn == this)
+		{
+			focusOn = null;
+			_doublePressed = false;
+			canType = false;
+			FlxG.stage.window.textInputEnabled = false;
+		}
 	}
 
 	function deleteSelection()

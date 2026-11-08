@@ -12,6 +12,10 @@ import openfl.events.IOErrorEvent;
 import openfl.net.FileReference;
 import haxe.Json;
 
+#if android
+import mobile.external.android.FileExplorer;
+#end
+
 @:access(objects.NoteSplash)
 class NoteSplashEditorState extends MusicBeatState
 {
@@ -35,7 +39,7 @@ class NoteSplashEditorState extends MusicBeatState
         if (imageSkin == null)
             imageSkin =  NoteSplash.defaultNoteSplash + NoteSplash.getSplashSkinPostfix();
 
-        FlxG.mouse.visible = true;
+        #if !mobile FlxG.mouse.visible = true; #end
 
         FlxG.sound.volumeUpKeys = [];
         FlxG.sound.volumeDownKeys = [];
@@ -73,7 +77,7 @@ class NoteSplashEditorState extends MusicBeatState
 
         var tipText:FlxText = new FlxText();
         tipText.setFormat(null, 24);
-        tipText.text = "Press F1 for Help";
+        tipText.text = "Press " + #if !mobile "F1" #else "F" #end + " for Help";
         tipText.setPosition(properUI.x - properUI.width + 15, UI.y);
         add(tipText);
 
@@ -118,6 +122,19 @@ class NoteSplashEditorState extends MusicBeatState
         add(curText);
 
         super.create();
+
+        addVirtualPad(LEFT_FULL, B);
+        virtualPad.addAction(F);
+        virtualPad.addAction(C);
+        virtualPad.addAction(X);
+        virtualPad.addAction(Y);
+        virtualPad.addAction(Z);
+        virtualPad.buttonF.x = tipText.x + 120;
+        virtualPad.buttonF.y = tipText.y + 35;
+        virtualPad.buttonC.x -= 132;
+        virtualPad.buttonX.x -= 264;
+        virtualPad.buttonY.x -= 396;
+        virtualPad.buttonZ.x -= 528;
     }
 
     var animDropDown:PsychUIDropDownMenu;
@@ -535,31 +552,52 @@ class NoteSplashEditorState extends MusicBeatState
             }
 
             var changedOffset = false;
-            if (FlxG.keys.pressed.CONTROL && config.animations.get(curAnim) != null)
+            if (config.animations.get(curAnim) != null)
             {
-                if (FlxG.keys.justPressed.C)
-                {
-                    copiedOffset = config.animations.get(curAnim).offsets.copy();
-                }
-                else if (FlxG.keys.justPressed.V)
-                {
-                    var conf = config.animations.get(curAnim);
+                if (FlxG.keys.pressed.CONTROL) {
+                    if (FlxG.keys.justPressed.C)
+                    {
+                        copiedOffset = config.animations.get(curAnim).offsets.copy();
+                    }
+                    else if (FlxG.keys.justPressed.V)
+                    {
+                        var conf = config.animations.get(curAnim);
+                        conf.offsets = copiedOffset.copy(); 
+                        config.animations.set(curAnim, conf);
+                        changedOffset = true;
+                	}
+                	else if(FlxG.keys.justPressed.R)
+                	{
+                    	var conf = config.animations.get(curAnim);
+                    	conf.offsets = [0, 0];
+                    	config.animations.set(curAnim, conf);
+                    	changedOffset = true;
+                	}
+				}
+
+				if (virtualPad.buttonX.justPressed)
+				{
+					copiedOffset = config.animations.get(curAnim).offsets.copy();
+				}
+				else if (virtualPad.buttonY.justPressed)
+				{
+					var conf = config.animations.get(curAnim);
                     conf.offsets = copiedOffset.copy(); 
                     config.animations.set(curAnim, conf);
                     changedOffset = true;
-                }
-                else if(FlxG.keys.justPressed.R)
-                {
-                    var conf = config.animations.get(curAnim);
+				}
+				else if (virtualPad.buttonZ.justPressed)
+				{
+					var conf = config.animations.get(curAnim);
                     conf.offsets = [0, 0];
                     config.animations.set(curAnim, conf);
                     changedOffset = true;
-                }
+				}
             }
 
-            var multiplier:Int = (FlxG.keys.pressed.SHIFT || FlxG.gamepads.anyPressed(LEFT_SHOULDER)) ? 10 : 1;
+            var multiplier:Int = (FlxG.keys.pressed.SHIFT || virtualPad.buttonC.pressed || FlxG.gamepads.anyPressed(LEFT_SHOULDER)) ? 10 : 1;
 
-            var moveKeysP = [FlxG.keys.justPressed.LEFT, FlxG.keys.justPressed.RIGHT, FlxG.keys.justPressed.UP, FlxG.keys.justPressed.DOWN];
+            var moveKeysP = #if !mobile [FlxG.keys.justPressed.LEFT, FlxG.keys.justPressed.RIGHT, FlxG.keys.justPressed.UP, FlxG.keys.justPressed.DOWN] #else [virtualPad.buttonLeft.justPressed, virtualPad.buttonRight.justPressed, virtualPad.buttonUp.justPressed, virtualPad.buttonDown.justPressed] #end;
             if(moveKeysP.contains(true))
             {
                 config.animations[curAnim].offsets[0] += ((moveKeysP[0] ? 1 : 0) - (moveKeysP[1] ? 1 : 0)) * multiplier;
@@ -567,7 +605,7 @@ class NoteSplashEditorState extends MusicBeatState
                 changedOffset = true;
             }
     
-            var moveKeys = [FlxG.keys.pressed.LEFT, FlxG.keys.pressed.RIGHT, FlxG.keys.pressed.UP, FlxG.keys.pressed.DOWN];
+            var moveKeys = #if !mobile [FlxG.keys.pressed.LEFT, FlxG.keys.pressed.RIGHT, FlxG.keys.pressed.UP, FlxG.keys.pressed.DOWN] #else [virtualPad.buttonLeft.pressed, virtualPad.buttonRight.pressed, virtualPad.buttonUp.pressed, virtualPad.buttonDown.pressed] #end;
             if(moveKeys.contains(true))
             {
                 holdingArrowsTime += elapsed;
@@ -590,19 +628,22 @@ class NoteSplashEditorState extends MusicBeatState
 
         if (!blockInput)
         {
-            if (controls.BACK)
+            if (controls.BACK #if android || FlxG.android.justReleased.BACK #end)
                 MusicBeatState.switchState(new MasterEditorMenu());
-            if (FlxG.keys.justPressed.F1)
+            if (FlxG.keys.justPressed.F1 || virtualPad.buttonF.justPressed)
+			{
+				virtualPad.visible = false;
                 openSubState(new NoteSplashEditorHelpSubState());
+			}
         }
 
-        if (FlxG.mouse.overlaps(strums))
+        if (TouchUtil.overlaps(strums))
         {
             strums.forEach(function(strum:StrumNote)
             {
-                if (FlxG.mouse.overlaps(strum))
+                if (TouchUtil.overlaps(strum))
                 {
-                    if (!FlxG.mouse.justPressed)
+                    if (!TouchUtil.justPressed)
                     {
                         if (strum.animation.curAnim.name != 'pressed' && strum.animation.curAnim.name != 'confirm')
                             strum.playAnim('pressed');
@@ -629,6 +670,13 @@ class NoteSplashEditorState extends MusicBeatState
                 strum.playAnim('static');
         }
     }
+
+	override function closeSubState()
+	{
+		virtualPad.visible = true;
+		FlxG.inputs.reset();
+		super.closeSubState();
+	}
 
     function playStrumAnim(?name:String, noteData:Int)
     {
@@ -735,13 +783,17 @@ class NoteSplashEditorState extends MusicBeatState
             config.rgb.push(null);
     }
 
+	#if !mobile
     var _file:FileReference;
+	#end
     function onSaveComplete(_):Void
     {
+		#if !mobile
         _file.removeEventListener(Event.COMPLETE, onSaveComplete);
         _file.removeEventListener(Event.CANCEL, onSaveCancel);
         _file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
         _file = null;
+		#end
         FlxG.log.notice("Successfully saved file.");
     }
 
@@ -750,10 +802,12 @@ class NoteSplashEditorState extends MusicBeatState
      */
     function onSaveCancel(_):Void
     {
+		#if !mobile
         _file.removeEventListener(Event.COMPLETE, onSaveComplete);
         _file.removeEventListener(Event.CANCEL, onSaveCancel);
         _file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
         _file = null;
+		#end
     }
 
     /**
@@ -761,10 +815,12 @@ class NoteSplashEditorState extends MusicBeatState
      */
     function onSaveError(_):Void
     {
+		#if !mobile
         _file.removeEventListener(Event.COMPLETE, onSaveComplete);
         _file.removeEventListener(Event.CANCEL, onSaveCancel);
         _file.removeEventListener(IOErrorEvent.IO_ERROR, onSaveError);
         _file = null;
+		#end
         FlxG.log.error("Problem saving file");
     }
 
@@ -774,49 +830,73 @@ class NoteSplashEditorState extends MusicBeatState
         var data:String = Json.stringify(config, "\t");
         if (data.length > 0)
         {
+			#if !mobile
             _file = new FileReference();
             _file.addEventListener(Event.COMPLETE, onSaveComplete);
             _file.addEventListener(Event.CANCEL, onSaveCancel);
             _file.addEventListener(IOErrorEvent.IO_ERROR, onSaveError);
             _file.save(data, imageSkin + ".json");
+			#elseif android
+			FileExplorer.saveFile(data, MIMEType.JSON, imageSkin + ".json", onSaveComplete, ()->onSaveCancel(null), ()->onSaveError(null));
+			#end
         }
     }
 
     public function loadTxt()
     {
         var jsonFilter:FileFilter = new FileFilter('Select a note splash TXT', '*.txt');
+		#if !mobile
         _file = new FileReference();
         _file.addEventListener(Event.SELECT, onLoadComplete);
         _file.addEventListener(Event.CANCEL, onLoadCancel);
         _file.addEventListener(IOErrorEvent.IO_ERROR, onLoadError);
         _file.browse([#if !mac jsonFilter #end]);
+		#elseif android
+		FileExplorer.selectFile(MIMEType.filterToMIME([jsonFilter]), onLoadComplete, ()->onLoadCancel(null), ()->onLoadError(null)); // "jsonFilter"
+		#end
     }
 
-    function onLoadComplete(_):Void
+    function onLoadComplete(data:Dynamic):Void
     {
+		#if !mobile
         _file.removeEventListener(Event.SELECT, onLoadComplete);
         _file.removeEventListener(Event.CANCEL, onLoadCancel);
         _file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
+		#end
 
         try 
         {
+			#if !mobile
             var txtLoaded:Dynamic = Json.parse(Json.stringify(_file));
+			#end
             var txt:String = null;
             var file:String = "config.json";
             #if MODS_ALLOWED
+			#if !mobile
             if (txtLoaded.__path != null)
             {
                 try txt = File.getContent(txtLoaded.__path) catch (e) txt = null;
                 file = txtLoaded.__path;
                 file = file.substring(0, file.length - 4) + ".json";
             }
+			#else
+			if (data != null)
+			{
+				try txt = File.getContent(data) catch (e) txt = null;
+                file = new haxe.io.Path(data).file + ".json";
+			}
+			#end
 
             var conf = parseTxt(txt);
+			#if !mobile
             _file = new FileReference();
             _file.addEventListener(Event.COMPLETE, onSaveComplete);
             _file.addEventListener(Event.CANCEL, onSaveCancel);
             _file.addEventListener(IOErrorEvent.IO_ERROR, onSaveError);
             _file.save(Json.stringify(conf, "\t"), file);
+			#elseif android
+			FileExplorer.saveFile(Json.stringify(conf, "\t"), MIMEType.JSON, file, onSaveComplete, ()->onSaveCancel(null), ()->onSaveError(null));
+			#end
             #end
         }
         catch (e)
@@ -830,10 +910,12 @@ class NoteSplashEditorState extends MusicBeatState
      */
     function onLoadCancel(_):Void
     {
+		#if !mobile
         _file.removeEventListener(Event.SELECT, onLoadComplete);
         _file.removeEventListener(Event.CANCEL, onLoadCancel);
         _file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
         _file = null;
+		#end
         trace("Cancelled file loading.");
     }
 
@@ -842,10 +924,12 @@ class NoteSplashEditorState extends MusicBeatState
      */
     function onLoadError(_):Void
     {
+		#if !mobile
         _file.removeEventListener(Event.SELECT, onLoadComplete);
         _file.removeEventListener(Event.CANCEL, onLoadCancel);
         _file.removeEventListener(IOErrorEvent.IO_ERROR, onLoadError);
         _file = null;
+		#end
         trace("Problem loading file");
     }
 
@@ -935,7 +1019,9 @@ class NoteSplashEditorHelpSubState extends MusicBeatSubstate
         bg.alpha = 0.6;
         add(bg);
 
-        var str:Array<String> = ["Click on a Strum or Press Space",
+        var str:Array<String> =
+        #if !mobile
+        ["Click on a Strum or Press Space",
         "to spawn a Splash",
         "",
         "Arrow Keys - Move Offset",
@@ -946,7 +1032,21 @@ class NoteSplashEditorHelpSubState extends MusicBeatSubstate
         "Ctrl + R - Reset Current Offset",
         "",
         "On every 4 subsequent note datas",
-        "an extra set of animations will be added"];
+        "an extra set of animations will be added"]
+        #else
+        ["Tap on a Strum",
+        "to spawn a Splash",
+        "",
+        "Arrow Keys - Move Offset",
+        "Hold C - Move Offsets 10x faster",
+        "",
+        "X - Copy Current Offset",
+        "Y - Paste Copied Offset on Current Splash",
+        "Z - Reset Current Offset",
+        "",
+        "On every 4 subsequent note datas",
+        "an extra set of animations will be added"]
+        #end;
 
         var helpTexts:FlxSpriteGroup = new FlxSpriteGroup();
         for (i => txt in str)
@@ -972,13 +1072,16 @@ class NoteSplashEditorHelpSubState extends MusicBeatSubstate
         noteDataText.y = FlxG.height - noteDataText.height - 5;
 
         add(noteDataText);
+
+		addVirtualPad(NONE, F);
+		virtualPad.buttonF.setPosition(FlxG.width - 150, 20);
     }
 
     override function update(elapsed:Float)
     {
         super.update(elapsed);
 
-        if (controls.BACK || FlxG.keys.justPressed.F1)
+        if (controls.BACK || FlxG.keys.justPressed.F1 || virtualPad.buttonF.justPressed)
             close();
     }
 }

@@ -73,6 +73,7 @@ class FreeplayState extends MusicBeatState
 			MusicBeatState.switchState(new states.ErrorState("NO WEEKS ADDED FOR FREEPLAY\n\nPress ACCEPT to go to the Week Editor Menu.\nPress BACK to return to Main Menu.",
 				function() MusicBeatState.switchState(new states.editors.WeekEditorState()),
 				function() MusicBeatState.switchState(new states.MainMenuState())));
+			addVirtualPad(NONE, A_B);
 			return;
 		}
 
@@ -175,7 +176,11 @@ class FreeplayState extends MusicBeatState
 		bottomBG.alpha = 0.6;
 		add(bottomBG);
 
+		#if mobile
+		var leText:String = Language.getPhrase("freeplay_tip_mobile", "Press X to listen to the Song / Press C to open the Gameplay Changers Menu / Press Y to Reset your Score and Accuracy.");
+		#else
 		var leText:String = Language.getPhrase("freeplay_tip", "Press SPACE to listen to the Song / Press CTRL to open the Gameplay Changers Menu / Press RESET to Reset your Score and Accuracy.");
+		#end
 		bottomString = leText;
 		var size:Int = 16;
 		bottomText = new FlxText(bottomBG.x, bottomBG.y + 4, FlxG.width, leText, size);
@@ -189,12 +194,16 @@ class FreeplayState extends MusicBeatState
 		changeSelection();
 		updateTexts();
 		super.create();
+
+		addVirtualPad(LEFT_FULL, A_B_C_X_Y_Z);
 	}
 
 	override function closeSubState()
 	{
 		changeSelection(0, false);
 		persistentUpdate = true;
+		virtualPad.visible = true;
+		FlxG.inputs.reset();
 		super.closeSubState();
 	}
 
@@ -239,7 +248,7 @@ class FreeplayState extends MusicBeatState
 			ratingSplit[1] += '0';
 
 		var shiftMult:Int = 1;
-		if(FlxG.keys.pressed.SHIFT) shiftMult = 3;
+		if(FlxG.keys.pressed.SHIFT || virtualPad.buttonZ.pressed) shiftMult = 3;
 
 		if (!player.playingMusic)
 		{
@@ -300,7 +309,7 @@ class FreeplayState extends MusicBeatState
 			}
 		}
 
-		if (controls.BACK)
+		if (controls.BACK #if android || FlxG.android.justReleased.BACK #end)
 		{
 			if (player.playingMusic)
 			{
@@ -323,12 +332,13 @@ class FreeplayState extends MusicBeatState
 			}
 		}
 
-		if(FlxG.keys.justPressed.CONTROL && !player.playingMusic)
+		if((FlxG.keys.justPressed.CONTROL || virtualPad.buttonC.justPressed) && !player.playingMusic)
 		{
 			persistentUpdate = false;
+			virtualPad.visible = false;
 			openSubState(new GameplayChangersSubstate());
 		}
-		else if(FlxG.keys.justPressed.SPACE)
+		else if(FlxG.keys.justPressed.SPACE || virtualPad.buttonX.justPressed)
 		{
 			if(instPlaying != curSelected && !player.playingMusic)
 			{
@@ -452,9 +462,10 @@ class FreeplayState extends MusicBeatState
 			DiscordClient.loadModRPC();
 			#end
 		}
-		else if(controls.RESET && !player.playingMusic)
+		else if((controls.RESET || virtualPad.buttonY.justPressed) && !player.playingMusic)
 		{
 			persistentUpdate = false;
+			virtualPad.visible = false;
 			openSubState(new ResetScoreSubState(songs[curSelected].songName, curDifficulty, songs[curSelected].songCharacter));
 			FlxG.sound.play(Paths.sound('scrollMenu'));
 		}
