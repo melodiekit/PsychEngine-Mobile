@@ -2,6 +2,10 @@
 
 Engine originally used on [Mind Games Mod](https://gamebanana.com/mods/301107), intended to be a fix for the vanilla version's many issues while keeping the casual play aspect of it. Also aiming to be an easier alternative to newbie coders.
 
+This fork aims to bring Psych Engine to mobile, bringing in almost every single aspect of the original Psych Engine right into your phone!
+If you have any inquires or found any bugs, please open up an Issue on the Issues tab.
+Though, if you want to contribute to the fork, open up a Pull Request! Any contribution is greatly appreciated.
+
 ## Installation:
 
 Refer to [the Build Instructions](/docs/BUILDING.md)
@@ -24,6 +28,8 @@ There you can learn how to use the 212 PlayState funcions in your mod!
 ## Credits:
 * Shadow Mario - Main Programmer and Head of Psych Engine.
 * Riveren - Main Artist/Animator of Psych Engine.
+
+* melodiekit - Mobile Porter
 
 ### Special Thanks
 * bbpanzu - Ex-Team Member (Programmer).
@@ -51,12 +57,12 @@ There you can learn how to use the 212 PlayState funcions in your mod!
 
 ## New Main Menu
 * A brand new menu that makes your experience even better!
-![Main Menu](docs/img/MainMenu.png)
+![Main Menu](docs/img/MainMenu.jpg)
 
 ## Mod Support
 * Probably one of the main points of this engine, you can code in .lua files outside of the source code, making your own weeks without even messing with the source!
 * Comes with a Mod Organizing/Disabling Menu.
-![Mod Support](docs/img/ModsMenu.png)
+![Mod Support](docs/img/ModsMenu.jpg)
 
 
 ## Atleast one change to every week:
@@ -82,7 +88,7 @@ There you can learn how to use the 212 PlayState funcions in your mod!
   * Also there's the Background girls being spooky during the "Hey!" parts of the Instrumental
 
 ## Cool new Chart Editor changes and countless bug fixes
-![Chart Editor](docs/img/chart.png)
+![Chart Editor](docs/img/chart.jpg)
 * You can now chart "Event" notes, which are bookmarks that trigger specific actions that usually were hardcoded on the vanilla version of the game.
 * Your song's BPM can now have decimal values
 * You can manually adjust a Note's strum time if you're really going for milisecond precision
@@ -94,26 +100,26 @@ There you can learn how to use the 212 PlayState funcions in your mod!
   * No Animation: Character just hits the note, no animation plays.
 
 ## Multiple editors to assist you in making your own Mod
-![Master Editor Menu](docs/img/editors.png)
+![Master Editor Menu](docs/img/editors.jpg)
 * Working both for Source code modding and Downloaded builds!
 
 ## Story mode menu rework:
-![Story Mode Menu](docs/img/storymode.png)
+![Story Mode Menu](docs/img/storymode.jpg)
 * Added a different BG to every song (less Tutorial)
 * All menu characters are now in individual spritesheets, makes modding it easier.
 
 ## Credits menu
-![Credits Menu](docs/img/credits.png)
+![Credits Menu](docs/img/credits.jpg)
 * You can add a head icon, name, description and a Redirect link for when the player presses Enter while the item is currently selected.
 
 ## Awards/Achievements
 * The engine comes with 16 example achievements that you can mess with and learn how it works (Check Achievements.hx and search for "checkForAchievement" on PlayState.hx)
-![Achievements](docs/img/Achievements.png)
+![Achievements](docs/img/Achievements.jpg)
 
 ## Options menu:
 * You can change Note colors, Delay and Combo Offset, Controls and Preferences there.
  * On Preferences you can toggle Downscroll, Middlescroll, Anti-Aliasing, Framerate, Low Quality, Note Splashes, Flashing Lights, etc.
-![Options](docs/img/Options.png)
+![Options](docs/img/Options.jpg)
 
 ## Other gameplay features:
 * When the enemy hits a note, their strum note also glows.
