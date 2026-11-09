@@ -448,8 +448,8 @@ class Paths
 	}
 
 	#if MODS_ALLOWED
-	inline static public function mods(key:String = '')
-		return #if android StorageUtil.getPsychFolder() + #end 'mods/' + key;
+	inline static public function mods(key:String = '' #if android , addAndroidStorage:Bool = true #end)
+		return #if android (addAndroidStorage ? StorageUtil.getPsychFolder() : '') + #end 'mods/' + key;
 
 	inline static public function modsJson(key:String)
 		return modFolders('data/' + key + '.json');

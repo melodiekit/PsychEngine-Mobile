@@ -14,7 +14,7 @@ enum ControlMode {
 
 class MobileData
 {
-	public static var buildVersion:String = '1.0.0';
+	public static var buildVersion:String = '1.0.1';
 	public static var controlModes:Map<String, ControlMode> = [];
 	public static var hitboxStyles:Array<String> = ['Normal', 'Gradient', 'Hidden'];
 	public static var save:FlxSave;

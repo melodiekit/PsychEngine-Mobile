@@ -15,6 +15,10 @@ import crowplexus.iris.IrisConfig;
 import crowplexus.hscript.Expr.Error as IrisError;
 import crowplexus.hscript.Printer;
 
+#if mobile
+import mobile.backend.StorageUtil;
+#end
+
 import haxe.ValueException;
 
 typedef HScriptInfos = {
@@ -92,8 +96,12 @@ class HScript extends Iris
 		{
 			this.origin = filePath;
 			#if MODS_ALLOWED
-			var myFolder:Array<String> = filePath.split('/');
-			if(myFolder[0] + '/' == Paths.mods() && (Mods.currentModDirectory == myFolder[1] || Mods.getGlobalMods().contains(myFolder[1]))) //is inside mods folder
+			var newPath:String = filePath;
+			#if android
+			newPath = newPath.substring(StorageUtil.getPsychFolder().length);
+			#end
+			var myFolder:Array<String> = newPath.split('/');
+			if(myFolder[0] + '/' == Paths.mods(#if android '', false #end) && (Mods.currentModDirectory == myFolder[1] || Mods.getGlobalMods().contains(myFolder[1]))) //is inside mods folder
 				this.modFolder = myFolder[1];
 			#end
 		}

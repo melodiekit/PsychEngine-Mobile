@@ -38,6 +38,10 @@ import psychlua.HScript;
 import psychlua.DebugLuaText;
 import psychlua.ModchartSprite;
 
+#if mobile
+import mobile.backend.StorageUtil;
+#end
+
 import flixel.input.keyboard.FlxKey;
 import flixel.input.gamepad.FlxGamepadInputID;
 
@@ -70,9 +74,13 @@ class FunkinLua {
 		var game:PlayState = PlayState.instance;
 		if(game != null) game.luaArray.push(this);
 
-		var myFolder:Array<String> = this.scriptName.split('/');
+		var newPath:String = this.scriptName;
+		#if android
+		newPath = newPath.substring(StorageUtil.getPsychFolder().length);
+		#end
+		var myFolder:Array<String> = newPath.split('/');
 		#if MODS_ALLOWED
-		if(myFolder[0] + '/' == Paths.mods() && (Mods.currentModDirectory == myFolder[1] || Mods.getGlobalMods().contains(myFolder[1]))) //is inside mods folder
+		if(myFolder[0] + '/' == Paths.mods(#if android '', false #end) && (Mods.currentModDirectory == myFolder[1] || Mods.getGlobalMods().contains(myFolder[1]))) //is inside mods folder
 			this.modFolder = myFolder[1];
 		#end
 

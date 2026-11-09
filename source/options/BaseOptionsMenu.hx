@@ -172,8 +172,9 @@ class BaseOptionsMenu extends MusicBeatSubstate
 						bindingText = new Alphabet(FlxG.width / 2, 160, Language.getPhrase('controls_rebinding', 'Rebinding {1}', [curOption.name]), false);
 						bindingText.alignment = CENTERED;
 						add(bindingText);
-						
-						bindingText2 = new Alphabet(FlxG.width / 2, 340, Language.getPhrase('controls_rebinding2', 'Hold ESC to Cancel\nHold Backspace to Delete'), true);
+
+						var rebindingText:String = #if !mobile Language.getPhrase('controls_rebinding2', 'Hold ESC to Cancel\nHold Backspace to Delete') #else Language.getPhrase('controls_rebinding2_mobile', 'Hold B to Cancel\nHold A to Delete') #end;
+						bindingText2 = new Alphabet(FlxG.width / 2, 340, rebindingText, true);
 						bindingText2.alignment = CENTERED;
 						add(bindingText2);
 	
@@ -181,6 +182,8 @@ class BaseOptionsMenu extends MusicBeatSubstate
 						holdingEsc = 0;
 						ClientPrefs.toggleVolumeKeys(false);
 						FlxG.sound.play(Paths.sound('scrollMenu'));
+
+						virtualPad.buttonLeft.exists = virtualPad.buttonRight.exists = virtualPad.buttonUp.exists = virtualPad.buttonDown.exists = virtualPad.buttonC.exists = false;
 					}
 
 				default:
@@ -294,7 +297,7 @@ class BaseOptionsMenu extends MusicBeatSubstate
 
 	function bindingKeyUpdate(elapsed:Float)
 	{
-		if(FlxG.keys.pressed.ESCAPE || FlxG.gamepads.anyPressed(B))
+		if(FlxG.keys.pressed.ESCAPE || virtualPad.buttonB.pressed || FlxG.gamepads.anyPressed(B))
 		{
 			holdingEsc += elapsed;
 			if(holdingEsc > 0.5)
@@ -303,7 +306,7 @@ class BaseOptionsMenu extends MusicBeatSubstate
 				closeBinding();
 			}
 		}
-		else if (FlxG.keys.pressed.BACKSPACE || FlxG.gamepads.anyPressed(BACK))
+		else if (FlxG.keys.pressed.BACKSPACE || virtualPad.buttonA.pressed || FlxG.gamepads.anyPressed(BACK))
 		{
 			holdingEsc += elapsed;
 			if(holdingEsc > 0.5)
@@ -458,6 +461,8 @@ class BaseOptionsMenu extends MusicBeatSubstate
 		bindingText2.destroy();
 		remove(bindingText2);
 		ClientPrefs.toggleVolumeKeys(true);
+
+		virtualPad.buttonLeft.exists = virtualPad.buttonRight.exists = virtualPad.buttonUp.exists = virtualPad.buttonDown.exists = virtualPad.buttonC.exists = true;
 	}
 
 	function updateTextFrom(option:Option) {

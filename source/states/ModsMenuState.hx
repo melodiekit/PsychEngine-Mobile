@@ -242,6 +242,7 @@ class ModsMenuState extends MusicBeatState
 			var curMod:ModItem = modsGroup.members[curSelectedMod];
 			if(curMod != null && curMod.settings != null && curMod.settings.length > 0)
 			{
+				virtualPad.visible = false;
 				openSubState(new ModSettingsSubState(curMod.settings, curMod.folder, curMod.name));
 			}
 		}, 54, 54);
@@ -564,6 +565,12 @@ class ModsMenuState extends MusicBeatState
 			}
 		}
 		super.update(elapsed);
+	}
+
+	override function closeSubState()
+	{
+		virtualPad.visible = true;
+		super.closeSubState();
 	}
 
 	function changeSelectedButton(add:Int = 0)
